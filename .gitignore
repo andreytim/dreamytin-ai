@@ -1,6 +1,8 @@
 node_modules
 coverage
 dist
+.env
+.DS_Store
 
 # Claude preferences
 CLAUDE.md
