@@ -121,24 +121,18 @@ app.post('/api/chat', async (req, res) => {
     let systemPrompt;
     const isFirstMessage = conversation.length === 1; // Only the user message we just added
     
-    if (useFullContext) {
-      if (isFirstMessage) {
-        // Inject full knowledge only on first message when toggle is enabled
-        const allContext = Object.keys(knowledgeManager.knowledgeBase).map(key => ({
-          source: key,
-          content: knowledgeManager.knowledgeBase[key]
-        }));
-        systemPrompt = knowledgeManager.buildSystemPrompt(baseSystemPrompt, allContext);
-        console.log('📚 Full knowledge injected on first message');
-      } else {
-        // Use base prompt only - rely on conversation memory
-        systemPrompt = baseSystemPrompt;
-        console.log('📚 Using base prompt (knowledge in conversation memory)');
-      }
+    if (isFirstMessage) {
+      // Inject full knowledge only on first message
+      const allContext = Object.keys(knowledgeManager.knowledgeBase).map(key => ({
+        source: key,
+        content: knowledgeManager.knowledgeBase[key]
+      }));
+      systemPrompt = knowledgeManager.buildSystemPrompt(baseSystemPrompt, allContext);
+      console.log('📚 Full knowledge injected on first message');
     } else {
-      // Use intelligent context selection
-      systemPrompt = await knowledgeManager.getEnhancedSystemPromptIntelligent(baseSystemPrompt, message);
-      console.log('🧠 Using intelligent context selection');
+      // Use base prompt only - rely on conversation memory
+      systemPrompt = baseSystemPrompt;
+      console.log('📚 Using base prompt (knowledge in conversation memory)');
     }
     
     const result = streamText({
@@ -235,7 +229,6 @@ app.get('/api/usage', (_, res) => {
 // Context size endpoint  
 app.get('/api/context/:sessionId', (req, res) => {
   const { sessionId } = req.params;
-  const { useFullContext } = req.query;
   const conversation = conversations.get(sessionId) || [];
   
   // Calculate conversation tokens
@@ -251,8 +244,8 @@ app.get('/api/context/:sessionId', (req, res) => {
   const baseSystemPrompt = getSystemPrompt();
   let systemTokens = estimateTokens(baseSystemPrompt);
   
-  // Add knowledge tokens if Full Context is enabled and it's not empty conversation
-  if (useFullContext === 'true' && conversation.length > 0) {
+  // Add knowledge tokens if conversation exists (knowledge injected on first message)
+  if (conversation.length > 0) {
     const allKnowledge = Object.values(knowledgeManager.knowledgeBase).join('\n');
     systemTokens += estimateTokens(allKnowledge);
   }

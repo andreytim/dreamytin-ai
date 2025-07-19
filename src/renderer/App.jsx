@@ -8,7 +8,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState(modelSettings.defaultModel)
   const [usage, setUsage] = useState({ totalCost: 0, requests: 0 })
-  const [useFullContext, setUseFullContext] = useState(true)
   const [sessionId, setSessionId] = useState(() => Math.random().toString(36).substr(2, 9))
   const [contextSize, setContextSize] = useState({ tokenCount: 0, messageCount: 0 })
 
@@ -56,7 +55,7 @@ function App() {
   // Fetch context size
   const fetchContextSize = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/context/${sessionId}?useFullContext=${useFullContext}`)
+      const response = await fetch(`http://localhost:3001/api/context/${sessionId}`)
       if (response.ok) {
         const contextData = await response.json()
         setContextSize(contextData)
@@ -103,7 +102,7 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: currentInput, model: selectedModel, useFullContext, sessionId }),
+        body: JSON.stringify({ message: currentInput, model: selectedModel, useFullContext: true, sessionId }),
       })
 
       if (!response.ok) {
@@ -161,16 +160,6 @@ function App() {
             <span className="context-size">
               <span className="tokens-in">{formatTokens(contextSize.inputTokens || 0)} in</span> / <span className="tokens-out">{formatTokens(contextSize.outputTokens || 0)} out</span> tk
             </span>
-          </div>
-          <div className="knowledge-selector">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={useFullContext}
-                onChange={(e) => setUseFullContext(e.target.checked)}
-              />
-              Full Context
-            </label>
           </div>
           <div className="model-selector">
             <select 
