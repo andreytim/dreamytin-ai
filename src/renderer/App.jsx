@@ -8,6 +8,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState(modelSettings.defaultModel)
   const [usage, setUsage] = useState({ totalCost: 0, requests: 0 })
+  const [useFullContext, setUseFullContext] = useState(false)
+  const [sessionId, setSessionId] = useState(() => Math.random().toString(36).substr(2, 9))
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -72,7 +74,7 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: currentInput, model: selectedModel }),
+        body: JSON.stringify({ message: currentInput, model: selectedModel, useFullContext, sessionId }),
       })
 
       if (!response.ok) {
@@ -126,12 +128,23 @@ function App() {
             <span className="usage-requests">({usage.requests} requests)</span>
             <button onClick={resetUsage} className="reset-button" title="Reset usage">↺</button>
           </div>
+          <div className="knowledge-selector">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={useFullContext}
+                onChange={(e) => setUseFullContext(e.target.checked)}
+              />
+              Full Context
+            </label>
+          </div>
           <div className="model-selector">
             <select 
               value={selectedModel} 
               onChange={(e) => {
                 setSelectedModel(e.target.value)
                 setMessages([])
+                setSessionId(Math.random().toString(36).substr(2, 9)) // Generate new session
               }}
               className="model-dropdown"
             >

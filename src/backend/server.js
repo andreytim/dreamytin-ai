@@ -38,6 +38,33 @@ let sessionUsage = {
   startTime: new Date().toISOString()
 };
 
+// In-memory conversation storage (maps session ID to conversation history)
+const conversations = new Map();
+
+function estimateTokens(text) {
+  return Math.ceil(text.length / 4);
+}
+
+function truncateConversation(messages, maxTokens, modelKey) {
+  const modelConfig = models[modelKey];
+  const contextLimit = modelConfig?.maxTokens || 200000;
+  
+  let totalTokens = 0;
+  const result = [];
+  
+  // Add messages from newest to oldest until we hit the limit
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const messageTokens = estimateTokens(messages[i].content);
+    if (totalTokens + messageTokens > contextLimit * 0.8) { // Use 80% of limit for safety
+      break;
+    }
+    totalTokens += messageTokens;
+    result.unshift(messages[i]);
+  }
+  
+  return result;
+}
+
 
 // Get the appropriate AI provider for a model
 function getModelProvider(modelKey) {
@@ -70,28 +97,56 @@ function getModelProvider(modelKey) {
 // AI chat endpoint with streaming
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, model = defaultModel } = req.body;
+    const { message, model = defaultModel, useFullContext = false, sessionId = 'default', messages = [] } = req.body;
     
     res.setHeader('Content-Type', 'text/plain');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    // Get or create conversation history
+    let conversation = conversations.get(sessionId) || [];
+    
+    // Add new user message
+    conversation.push({ role: 'user', content: message });
+    
+    // Truncate conversation if needed
+    conversation = truncateConversation(conversation, undefined, model);
+    
+    // Store updated conversation
+    conversations.set(sessionId, conversation);
+
     const modelProvider = getModelProvider(model);
     const baseSystemPrompt = getSystemPrompt();
     
-    // Get enhanced system prompt with intelligent context selection
-    const systemPrompt = await knowledgeManager.getEnhancedSystemPromptIntelligent(baseSystemPrompt, message);
+    let systemPrompt;
+    if (useFullContext) {
+      // Use full context - include all knowledge files
+      const allContext = Object.keys(knowledgeManager.knowledgeBase).map(key => ({
+        source: key,
+        content: knowledgeManager.knowledgeBase[key]
+      }));
+      systemPrompt = knowledgeManager.buildSystemPrompt(baseSystemPrompt, allContext);
+    } else {
+      // Use intelligent context selection
+      systemPrompt = await knowledgeManager.getEnhancedSystemPromptIntelligent(baseSystemPrompt, message);
+    }
     
     const result = streamText({
       model: modelProvider,
       system: systemPrompt,
-      prompt: message,
+      messages: conversation.map(msg => ({ role: msg.role, content: msg.content }))
     });
 
+    let assistantResponse = '';
     for await (const textPart of result.textStream) {
+      assistantResponse += textPart;
       res.write(textPart);
     }
     res.end();
+    
+    // Add assistant response to conversation history
+    conversation.push({ role: 'assistant', content: assistantResponse });
+    conversations.set(sessionId, conversation);
     
     // Calculate cost after streaming is complete
     try {
