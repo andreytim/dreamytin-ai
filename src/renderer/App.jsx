@@ -7,6 +7,7 @@ function App() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState(modelSettings.defaultModel)
+  const [usage, setUsage] = useState({ totalCost: 0, requests: 0 })
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -16,6 +17,38 @@ function App() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    fetchUsage() // Load usage on component mount
+  }, [])
+
+  // Fetch usage data
+  const fetchUsage = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/usage')
+      if (response.ok) {
+        const usageData = await response.json()
+        setUsage(usageData)
+      }
+    } catch (error) {
+      console.error('Error fetching usage:', error)
+    }
+  }
+
+  // Reset usage
+  const resetUsage = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/usage/reset', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const usageData = await response.json()
+        setUsage(usageData)
+      }
+    } catch (error) {
+      console.error('Error resetting usage:', error)
+    }
+  }
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -61,6 +94,9 @@ function App() {
           return newMessages
         })
       }
+      
+      // Fetch updated usage after streaming completes
+      setTimeout(fetchUsage, 500) // Small delay to allow backend processing
     } catch (error) {
       console.error('Error sending message:', error)
       setMessages(prev => {
@@ -84,21 +120,28 @@ function App() {
     <div className="chat-container">
       <div className="chat-header">
         <h1>Dreamy Tin</h1>
-        <div className="model-selector">
-          <select 
-            value={selectedModel} 
-            onChange={(e) => {
-              setSelectedModel(e.target.value)
-              setMessages([])
-            }}
-            className="model-dropdown"
-          >
-            {Object.keys(modelSettings.models).map((modelId) => (
-              <option key={modelId} value={modelId}>
-                {modelId}
-              </option>
-            ))}
-          </select>
+        <div className="header-controls">
+          <div className="usage-display">
+            <span className="usage-cost">${usage.totalCost.toFixed(4)}</span>
+            <span className="usage-requests">({usage.requests} requests)</span>
+            <button onClick={resetUsage} className="reset-button" title="Reset usage">↺</button>
+          </div>
+          <div className="model-selector">
+            <select 
+              value={selectedModel} 
+              onChange={(e) => {
+                setSelectedModel(e.target.value)
+                setMessages([])
+              }}
+              className="model-dropdown"
+            >
+              {Object.keys(modelSettings.models).map((modelId) => (
+                <option key={modelId} value={modelId}>
+                  {modelId}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
       
