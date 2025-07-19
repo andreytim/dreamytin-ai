@@ -152,7 +152,10 @@ function App() {
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <h1>Dreamy Tin</h1>
+        <div className="header-title">
+          <img src="/icon.png" alt="DreamyTin AI" className="app-icon" />
+          <h1>Dreamy Tin</h1>
+        </div>
         <div className="header-controls">
           <div className="usage-display">
             <span className="usage-cost">${usage.totalCost.toFixed(4)}</span>
