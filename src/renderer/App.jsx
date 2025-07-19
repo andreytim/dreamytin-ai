@@ -57,7 +57,7 @@ function App() {
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <h1>DreamyTin AI Assistant</h1>
+        <h1>Dreamy Tin</h1>
       </div>
       
       <div className="messages-container">
