@@ -69,11 +69,13 @@ body {
 .message.user .message-content {
   background-color: #007AFF;
   color: white;
+  font-size: 13px;
 }
 
 .message.assistant .message-content {
   background-color: #f0f0f0;
   color: #333;
+  font-size: 13px;
 }
 
 .message-content.typing {
@@ -131,17 +133,18 @@ body {
 .message.assistant .message-content h4,
 .message.assistant .message-content h5,
 .message.assistant .message-content h6 {
-  margin: 0.5em 0;
+  margin: 0.05em 0 0 0;
   color: #333;
   font-weight: 600;
+  line-height: 1.1;
 }
 
 .message.assistant .message-content h1 {
-  font-size: 1.5em;
+  font-size: 1.2em;
 }
 
 .message.assistant .message-content h2 {
-  font-size: 1.3em;
+  font-size: 1.15em;
 }
 
 .message.assistant .message-content h3 {
@@ -149,8 +152,32 @@ body {
 }
 
 .message.assistant .message-content p {
-  margin: 0.5em 0;
-  line-height: 1.5;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.message.assistant .message-content h1 + ul,
+.message.assistant .message-content h2 + ul,
+.message.assistant .message-content h3 + ul,
+.message.assistant .message-content h4 + ul,
+.message.assistant .message-content h5 + ul,
+.message.assistant .message-content h6 + ul,
+.message.assistant .message-content h1 + ol,
+.message.assistant .message-content h2 + ol,
+.message.assistant .message-content h3 + ol,
+.message.assistant .message-content h4 + ol,
+.message.assistant .message-content h5 + ol,
+.message.assistant .message-content h6 + ol {
+  margin-top: 0;
+}
+
+.message.assistant .message-content p + ul,
+.message.assistant .message-content p + ol {
+  margin-top: 0;
+}
+
+.message.assistant .message-content p:last-child {
+  margin-bottom: 0;
 }
 
 .message.assistant .message-content code {
@@ -166,7 +193,7 @@ body {
   padding: 12px;
   border-radius: 6px;
   overflow-x: auto;
-  margin: 0.5em 0;
+  margin: 0.2em 0;
 }
 
 .message.assistant .message-content pre code {
@@ -177,13 +204,14 @@ body {
 
 .message.assistant .message-content ul,
 .message.assistant .message-content ol {
-  margin: 0.5em 0;
-  padding-left: 1.5em;
+  margin: 0;
+  padding-left: 0.8em;
 }
 
 .message.assistant .message-content li {
-  margin: 0.25em 0;
-  line-height: 1.4;
+  margin: 0;
+  line-height: 1.2;
+  padding-left: 0.2em;
 }
 
 .message.assistant .message-content blockquote {
