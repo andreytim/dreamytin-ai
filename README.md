@@ -1,2 +1,38 @@
 # dreamytin-ai
-My personal local agent.
+My personal AI assistant with local and remote model support.
+
+## Project Overview
+A desktop application serving as an ongoing life assistant with persistent knowledge management, finance tracking, and tech news monitoring.
+
+## Tech Stack
+- **Frontend**: Electron + React + Vite
+- **Backend**: Express.js server
+- **AI Models**: AI SDK (supports OpenAI, Anthropic, local models)
+- **Build Tools**: Vite for fast development, Concurrently for parallel processes
+- **Storage**: Simple text files (JSON/Markdown)
+
+## Architecture
+- `src/main/` - Electron main process
+- `src/renderer/` - UI frontend
+- `src/backend/` - Express API server
+- `data/knowledge/` - Personal knowledge base
+- `data/conversations/` - Chat history
+- `data/finance/` - Financial data
+- `data/news/` - Tech news & interests
+
+## Key Features (Planned)
+- Multi-provider AI model switching
+- Persistent conversation memory
+- Personal knowledge base
+- Finance management
+- Tech news monitoring
+- Local data storage
+
+## Getting Started
+```bash
+npm install
+npm run dev      # Starts both backend server and Electron app with hot reloading
+```
+
+## Configuration
+Environment variables are configured in the `.env` file. Update with your API keys as needed.
