@@ -24,8 +24,8 @@ A desktop application serving as an ongoing life assistant with persistent knowl
 ## Components
 
 ### Frontend (`src/renderer/`)
-- **App.jsx** - Main React chat interface with streaming messages and markdown support
-- **index.css** - Complete styling for chat UI, markdown formatting, and responsive design
+- **App.jsx** - Main React chat interface with streaming messages, markdown support, and model selection dropdown
+- **index.css** - Complete styling for chat UI, markdown formatting, model dropdown, and responsive design
 - **main.jsx** - React app entry point
 
 ### Backend (`src/backend/`)
@@ -33,10 +33,10 @@ A desktop application serving as an ongoing life assistant with persistent knowl
 - Multi-provider routing (OpenAI, Anthropic, Google) with automatic API key validation
 
 ### Configuration (`src/config/`)
-- **modelSettings.js** - Centralized model configuration with provider mappings
+- **models.json** - Centralized model configuration with provider mappings
 
-## Key Features (Planned)
-- Multi-provider AI model switching
+## Key Features
+- Multi-provider AI model switching with dropdown selection in header
 - Persistent conversation memory
 - Personal knowledge base
 - Finance management
@@ -77,13 +77,16 @@ The application supports multiple AI providers: OpenAI, Anthropic, and Google.
 - **Anthropic**: `claude-3.5-sonnet`, `claude-3-sonnet`, `claude-3-haiku`  
 - **Google**: `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-1.5-flash`
 
-### Changing the Default Model
-Edit `src/config/modelSettings.js`:
+### Model Selection
+Models can be selected using the dropdown in the application header. The selected model persists for the current session.
 
-```javascript
-module.exports = {
-  defaultModel: 'gpt-4.1'  // Use any model key from the list above
-};
+### Changing the Default Model
+Edit `src/config/models.json`:
+
+```json
+{
+  "defaultModel": "gpt-4.1"
+}
 ```
 
-The model can also be overridden per request by including a `model` parameter in the API request body.
+The default model is automatically selected when the application starts.

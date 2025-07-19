@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import modelSettings from '../config/models.json'
 
 function App() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedModel, setSelectedModel] = useState(modelSettings.defaultModel)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -37,7 +39,7 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: currentInput }),
+        body: JSON.stringify({ message: currentInput, model: selectedModel }),
       })
 
       if (!response.ok) {
@@ -82,6 +84,19 @@ function App() {
     <div className="chat-container">
       <div className="chat-header">
         <h1>Dreamy Tin</h1>
+        <div className="model-selector">
+          <select 
+            value={selectedModel} 
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="model-dropdown"
+          >
+            {Object.keys(modelSettings.models).map((modelId) => (
+              <option key={modelId} value={modelId}>
+                {modelId}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       
       <div className="messages-container">

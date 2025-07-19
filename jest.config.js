@@ -20,6 +20,9 @@ module.exports = {
       transform: {
         '^.+\\.(js|jsx)$': 'babel-jest'
       },
+      moduleNameMapper: {
+        '^react-markdown$': '<rootDir>/tests/__mocks__/react-markdown.js'
+      },
       setupFilesAfterEnv: ['<rootDir>/tests/setupTests.js']
     },
     {

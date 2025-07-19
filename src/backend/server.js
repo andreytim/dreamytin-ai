@@ -4,7 +4,7 @@ const { openai } = require('@ai-sdk/openai');
 const { anthropic } = require('@ai-sdk/anthropic');
 const { google } = require('@ai-sdk/google');
 const { streamText } = require('ai');
-const { defaultModel, models } = require('../config/modelSettings');
+const { defaultModel, models } = require('../config/models.json');
 require('dotenv').config();
 
 const app = express();
