@@ -232,6 +232,20 @@ app.get('/api/usage', (_, res) => {
   res.json(sessionUsage);
 });
 
+// Context size endpoint
+app.get('/api/context/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const conversation = conversations.get(sessionId) || [];
+  const tokenCount = conversation.reduce((total, msg) => total + estimateTokens(msg.content), 0);
+  
+  res.json({
+    sessionId,
+    messageCount: conversation.length,
+    tokenCount,
+    estimatedTokens: tokenCount
+  });
+});
+
 // Reset usage endpoint
 app.post('/api/usage/reset', (_, res) => {
   sessionUsage = {

@@ -10,6 +10,22 @@ function App() {
   const [usage, setUsage] = useState({ totalCost: 0, requests: 0 })
   const [useFullContext, setUseFullContext] = useState(true)
   const [sessionId, setSessionId] = useState(() => Math.random().toString(36).substr(2, 9))
+  const [contextSize, setContextSize] = useState({ tokenCount: 0, messageCount: 0 })
+
+  // Format token count for display (e.g., 1200 -> "1.2k", 1000000 -> "1M")
+  const formatTokens = (tokens) => {
+    if (tokens >= 1000000) {
+      return `${(tokens / 1000000).toFixed(1)}M`
+    } else if (tokens >= 1000) {
+      return `${(tokens / 1000).toFixed(1)}k`
+    }
+    return tokens.toString()
+  }
+
+  // Get current model's token limit
+  const getCurrentModelLimit = () => {
+    return modelSettings.models[selectedModel]?.maxTokens || 200000
+  }
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -34,6 +50,19 @@ function App() {
       }
     } catch (error) {
       console.error('Error fetching usage:', error)
+    }
+  }
+
+  // Fetch context size
+  const fetchContextSize = async () => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/context/${sessionId}`)
+      if (response.ok) {
+        const contextData = await response.json()
+        setContextSize(contextData)
+      }
+    } catch (error) {
+      console.error('Error fetching context size:', error)
     }
   }
 
@@ -97,8 +126,11 @@ function App() {
         })
       }
       
-      // Fetch updated usage after streaming completes
-      setTimeout(fetchUsage, 500) // Small delay to allow backend processing
+      // Fetch updated usage and context size after streaming completes
+      setTimeout(() => {
+        fetchUsage()
+        fetchContextSize()
+      }, 500) // Small delay to allow backend processing
     } catch (error) {
       console.error('Error sending message:', error)
       setMessages(prev => {
@@ -126,7 +158,7 @@ function App() {
           <div className="usage-display">
             <span className="usage-cost">${usage.totalCost.toFixed(4)}</span>
             <span className="usage-requests">({usage.requests} requests)</span>
-            <button onClick={resetUsage} className="reset-button" title="Reset usage">↺</button>
+            <span className="context-size">{formatTokens(contextSize.tokenCount)}/{formatTokens(getCurrentModelLimit())} tk</span>
           </div>
           <div className="knowledge-selector">
             <label className="checkbox-label">
@@ -144,7 +176,9 @@ function App() {
               onChange={(e) => {
                 setSelectedModel(e.target.value)
                 setMessages([])
+                setContextSize({ tokenCount: 0, messageCount: 0 }) // Reset context display
                 setSessionId(Math.random().toString(36).substr(2, 9)) // Generate new session
+                resetUsage() // Reset cost tracking for new model
               }}
               className="model-dropdown"
             >
