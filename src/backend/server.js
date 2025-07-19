@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { openai } = require('@ai-sdk/openai');
-const { generateText } = require('ai');
+const { streamText } = require('ai');
 require('dotenv').config();
 
 const app = express();
@@ -10,7 +10,7 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-// AI chat endpoint
+// AI chat endpoint with streaming
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, model = 'gpt-3.5-turbo' } = req.body;
@@ -19,18 +19,27 @@ app.post('/api/chat', async (req, res) => {
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    const { text } = await generateText({
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    const result = streamText({
       model: openai(model),
       prompt: message,
     });
-    
-    res.json({ 
-      response: text,
-      model: model 
-    });
+
+    for await (const textPart of result.textStream) {
+      res.write(textPart);
+    }
+    res.end();
   } catch (error) {
     console.error('Chat error:', error);
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.write('\n\nError: ' + error.message);
+      res.end();
+    }
   }
 });
 

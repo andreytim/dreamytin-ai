@@ -18,9 +18,17 @@ function App() {
     if (!input.trim() || isLoading) return
 
     const userMessage = { role: 'user', content: input }
-    setMessages(prev => [...prev, userMessage])
+    const currentInput = input
     setInput('')
     setIsLoading(true)
+
+    // Add both user and assistant messages, calculate correct index
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage, { role: 'assistant', content: '' }]
+      return newMessages
+    })
+    
+    const assistantMessageIndex = messages.length + 1
 
     try {
       const response = await fetch('http://localhost:3001/api/chat', {
@@ -28,20 +36,35 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ message: currentInput }),
       })
 
       if (!response.ok) {
         throw new Error('Failed to get response')
       }
 
-      const data = await response.json()
-      const assistantMessage = { role: 'assistant', content: data.response }
-      setMessages(prev => [...prev, assistantMessage])
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        
+        setMessages(prev => {
+          const newMessages = [...prev]
+          newMessages[assistantMessageIndex].content += chunk
+          return newMessages
+        })
+      }
     } catch (error) {
       console.error('Error sending message:', error)
-      const errorMessage = { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }
-      setMessages(prev => [...prev, errorMessage])
+      setMessages(prev => {
+        const newMessages = [...prev]
+        newMessages[assistantMessageIndex].content = 'Sorry, I encountered an error. Please try again.'
+        return newMessages
+      })
     } finally {
       setIsLoading(false)
     }
