@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { openai } = require('@ai-sdk/openai');
 const { streamText } = require('ai');
+const { defaultModel } = require('../config/modelSettings');
 require('dotenv').config();
 
 const app = express();
@@ -13,7 +14,7 @@ app.use(express.json());
 // AI chat endpoint with streaming
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, model = 'gpt-3.5-turbo' } = req.body;
+    const { message, model = defaultModel } = req.body;
     
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({ error: 'OpenAI API key not configured' });

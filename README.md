@@ -46,3 +46,14 @@ npm run test:auto     # Auto-run tests on file changes
 
 ## Configuration
 Environment variables are configured in the `.env` file. Update with your API keys as needed.
+
+## AI Models
+To change the default model, edit `src/config/modelSettings.js`:
+
+```javascript
+module.exports = {
+  defaultModel: 'gpt-4.1'  // Update this value
+};
+```
+
+The model can also be overridden per request by including a `model` parameter in the API request body.
