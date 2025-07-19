@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, screen } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 
@@ -67,15 +67,21 @@ async function startBackendServer() {
 }
 
 function createWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: width,
+    height: height,
+    show: false,
     icon: path.join(__dirname, '../../assets/icon.png'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     }
   });
+
+  win.maximize();
+  win.show();
 
   // Load Vite dev server in development, built files in production
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;

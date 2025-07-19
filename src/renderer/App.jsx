@@ -150,75 +150,83 @@ function App() {
   }
 
   return (
-    <div className="chat-container">
-      <div className="chat-header">
-        <div className="header-title">
-          <img src="/icon.png" alt="DreamyTin AI" className="app-icon" />
-          <h1>Dreamy Tin</h1>
+    <div className="app-layout">
+      <div className="chat-container">
+        <div className="chat-header">
+          <div className="header-title">
+            <img src="/icon.png" alt="DreamyTin AI" className="app-icon" />
+            <h1>Dreamy Tin</h1>
+          </div>
+          <div className="header-controls">
+            <div className="usage-display">
+              <span className="usage-cost">${usage.totalCost.toFixed(4)}</span>
+              <span className="usage-requests">({usage.requests} requests)</span>
+              <span className="context-size">
+                <span className="tokens-in">{formatTokens(contextSize.inputTokens || 0)} in</span> / <span className="tokens-out">{formatTokens(contextSize.outputTokens || 0)} out</span> tk
+              </span>
+            </div>
+            <div className="model-selector">
+              <select 
+                value={selectedModel} 
+                onChange={(e) => {
+                  setSelectedModel(e.target.value)
+                  setMessages([])
+                  setContextSize({ tokenCount: 0, messageCount: 0, inputTokens: 0, outputTokens: 0 }) // Reset context display
+                  setSessionId(Math.random().toString(36).substr(2, 9)) // Generate new session
+                  resetUsage() // Reset cost tracking for new model
+                }}
+                className="model-dropdown"
+              >
+                {Object.keys(modelSettings.models).map((modelId) => (
+                  <option key={modelId} value={modelId}>
+                    {modelId}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
-        <div className="header-controls">
-          <div className="usage-display">
-            <span className="usage-cost">${usage.totalCost.toFixed(4)}</span>
-            <span className="usage-requests">({usage.requests} requests)</span>
-            <span className="context-size">
-              <span className="tokens-in">{formatTokens(contextSize.inputTokens || 0)} in</span> / <span className="tokens-out">{formatTokens(contextSize.outputTokens || 0)} out</span> tk
-            </span>
-          </div>
-          <div className="model-selector">
-            <select 
-              value={selectedModel} 
-              onChange={(e) => {
-                setSelectedModel(e.target.value)
-                setMessages([])
-                setContextSize({ tokenCount: 0, messageCount: 0, inputTokens: 0, outputTokens: 0 }) // Reset context display
-                setSessionId(Math.random().toString(36).substr(2, 9)) // Generate new session
-                resetUsage() // Reset cost tracking for new model
-              }}
-              className="model-dropdown"
-            >
-              {Object.keys(modelSettings.models).map((modelId) => (
-                <option key={modelId} value={modelId}>
-                  {modelId}
-                </option>
-              ))}
-            </select>
-          </div>
+        
+        <div className="messages-container">
+          {messages.map((message, index) => (
+            <div key={index} className={`message ${message.role}`}>
+              <div className="message-content">
+                {message.role === 'assistant' ? (
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                ) : (
+                  message.content
+                )}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="message assistant">
+              <div className="message-content typing">
+                Thinking...
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="input-container">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message here..."
+            rows="3"
+          />
+          <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
+            Send
+          </button>
         </div>
       </div>
       
-      <div className="messages-container">
-        {messages.map((message, index) => (
-          <div key={index} className={`message ${message.role}`}>
-            <div className="message-content">
-              {message.role === 'assistant' ? (
-                <ReactMarkdown>{message.content}</ReactMarkdown>
-              ) : (
-                message.content
-              )}
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="message assistant">
-            <div className="message-content typing">
-              Thinking...
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="input-container">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type your message here..."
-          rows="3"
-        />
-        <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
-          Send
-        </button>
+      <div className="canvas-area">
+        <div className="canvas-placeholder">
+          Canvas area - coming soon
+        </div>
       </div>
     </div>
   )
