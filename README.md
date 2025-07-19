@@ -70,29 +70,24 @@ The app now maintains conversation context within each session:
 
 ## Knowledge Management
 
-**Intelligent Knowledge System** powered by AI-driven file selection:
+**Simple File-Based Knowledge System** for personal context:
 
 ### Core Files
 - `data/knowledge/personal.md` - Personal background, family, location
 - `data/knowledge/work.md` - Career, job history, professional context  
 - `data/knowledge/interests.md` - Hobbies, activities, preferences
 
-### Selection Modes
-1. **🤖 AI-Powered** - Claude 3.5 Haiku analyzes queries and selects relevant files
-2. **🔤 Keyword Fallback** - Traditional matching when AI unavailable
-3. **📄 Full Context** - Include all knowledge files (toggle in UI)
+### How It Works
+1. **Auto-Loading** - All `.md` files loaded from `data/knowledge/` on startup
+2. **First Message Injection** - All knowledge files injected on conversation start
+3. **Conversation Memory** - Subsequent messages rely on chat history
+4. **Simple & Reliable** - No complex AI selection or caching logic
 
 ### Features
-- **Smart Caching** - Reduces costs for similar queries
-- **Runtime Control** - Toggle modes via `/api/knowledge/config`
-- **Auto-Loading** - New `.md` files automatically detected
-- **Cost Efficient** - Uses lightweight Haiku model for selection
-
-**API Endpoints:**
-- `GET /api/knowledge/config` - View system status
-- `POST /api/knowledge/config` - Toggle intelligent selection
-- `POST /api/knowledge/cache/clear` - Clear selection cache
-- `POST /api/knowledge/reload` - Reload knowledge files
+- **File-Based Storage** - Easy to edit knowledge files directly
+- **Automatic Discovery** - New `.md` files automatically loaded
+- **Conversation Efficient** - Knowledge injected once per conversation
+- **No Dependencies** - No external AI calls for knowledge management
 
 ## Building
 

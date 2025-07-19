@@ -177,49 +177,6 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Knowledge system configuration endpoints
-app.get('/api/knowledge/config', async (_, res) => {
-  try {
-    // Generate summaries if they don't exist
-    const summaries = await knowledgeManager.generateKnowledgeSummaries();
-    
-    res.json({
-      intelligentSelection: knowledgeManager.enableIntelligentSelection,
-      cacheSize: knowledgeManager.selectionCache.size,
-      availableFiles: Object.keys(knowledgeManager.knowledgeBase),
-      summariesGenerated: Object.keys(knowledgeManager.knowledgeSummaries).length > 0,
-      summaries: summaries
-    });
-  } catch (error) {
-    console.error('Error getting knowledge config:', error);
-    res.json({
-      intelligentSelection: knowledgeManager.enableIntelligentSelection,
-      cacheSize: knowledgeManager.selectionCache.size,
-      availableFiles: Object.keys(knowledgeManager.knowledgeBase),
-      summariesGenerated: false,
-      summaries: {},
-      error: error.message
-    });
-  }
-});
-
-app.post('/api/knowledge/config', (req, res) => {
-  const { intelligentSelection } = req.body;
-  if (typeof intelligentSelection === 'boolean') {
-    knowledgeManager.setIntelligentSelection(intelligentSelection);
-  }
-  res.json({ success: true });
-});
-
-app.post('/api/knowledge/cache/clear', (_, res) => {
-  knowledgeManager.clearCache();
-  res.json({ success: true, message: 'Cache cleared' });
-});
-
-app.post('/api/knowledge/reload', (_, res) => {
-  knowledgeManager.reload();
-  res.json({ success: true, message: 'Knowledge base reloaded' });
-});
 
 // Usage endpoint
 app.get('/api/usage', (_, res) => {

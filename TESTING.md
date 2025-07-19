@@ -33,7 +33,8 @@ tests/
 ├── setupTests.js        # Global test configuration
 ├── unit/
 │   ├── frontend/        # React component unit tests
-│   └── backend/         # Backend logic unit tests (if any)
+│   └── backend/         # Backend logic unit tests
+│       └── knowledgeManager.test.js  # KnowledgeManager test suite (19 tests)
 └── integration/         # API integration tests
 ```
 
@@ -67,6 +68,26 @@ Create `.test.js` files in `tests/integration/` directory following the pattern 
 
 ### Backend Unit Tests
 Create `.test.js` files in `tests/unit/backend/` directory for testing individual functions/modules.
+
+#### KnowledgeManager Tests (`tests/unit/backend/knowledgeManager.test.js`)
+Simplified test suite for the file-based knowledge system:
+
+```bash
+# Run KnowledgeManager tests specifically
+npm test -- tests/unit/backend/knowledgeManager.test.js
+```
+
+**Test Coverage (14 passing tests):**
+- **Constructor & Initialization** - Auto-loading, custom directories, error handling
+- **Knowledge Base Loading** - File system operations, markdown parsing, graceful failures  
+- **System Prompt Building** - Context injection and formatting
+- **Utility Methods** - Getting knowledge base and reloading files
+
+**Key Test Features:**
+- Mock file system operations for reliable testing
+- Error handling and edge case coverage
+- Clean test output (no console logs during testing)
+- Focus on core functionality without complex AI logic
 
 ### Frontend Unit Tests
 Create `.test.jsx` files in `tests/unit/frontend/` directory following the pattern in `App.test.jsx`.
