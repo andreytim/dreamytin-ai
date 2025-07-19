@@ -70,7 +70,7 @@ function App() {
     }
   }
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
@@ -105,9 +105,8 @@ function App() {
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyDown}
           placeholder="Type your message here..."
-          disabled={isLoading}
           rows="3"
         />
         <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
