@@ -110,6 +110,32 @@ The default model is automatically selected when the application starts.
 ### System Prompt Configuration
 The AI assistant's behavior is controlled by a system prompt stored in `data/system-prompt.md`. This file contains the core instructions that define the assistant's personality, capabilities, and response style. The system prompt is automatically loaded and applied to all AI interactions across different models.
 
+### Personal Knowledge Base
+The application includes an intelligent knowledge injection system that personalizes AI responses based on contextual information stored in markdown files.
+
+**Knowledge Directory**: `data/knowledge/`
+
+The system automatically loads all `.md` files from the knowledge directory and intelligently injects relevant context based on user message keywords. This enables the AI to provide personalized, contextually-aware responses.
+
+**Supported Knowledge Categories:**
+- `personal_profile_summary.md` - Personal background, family, location details
+- `work.md` - Career information, job history, professional context
+- `interests.md` - Hobbies, activities, personal interests
+
+**How it works:**
+1. **Keyword Detection** - The system analyzes user messages for relevant keywords
+2. **Context Selection** - Automatically selects appropriate knowledge files based on message content
+3. **Smart Injection** - Enhances the system prompt with relevant personal context
+4. **Fallback Behavior** - Uses personal profile as default context for general conversations
+
+**Example Keywords:**
+- Personal: "personal", "family", "background", "who are you"
+- Work: "job", "career", "work", "engineering", "Meta"
+- Interests: "hobbies", "interests", "basketball", "exercise"
+
+**Adding Knowledge:**
+Simply create new `.md` files in `data/knowledge/` - they will be automatically loaded on server startup. The filename (without `.md`) becomes the knowledge category key.
+
 ## Development vs Production
 The application now uses a unified architecture where the backend runs embedded within the Electron main process in both development and production modes. This ensures:
 

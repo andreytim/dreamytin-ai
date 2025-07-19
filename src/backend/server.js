@@ -6,6 +6,7 @@ const { google } = require('@ai-sdk/google');
 const { streamText } = require('ai');
 const { defaultModel, models } = require('../config/models.json');
 const { pricing } = require('../config/pricing.json');
+const KnowledgeManager = require('./knowledgeManager');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -24,94 +25,8 @@ function getSystemPrompt() {
   }
 }
 
-// Load knowledge files
-function loadKnowledgeBase() {
-  const knowledgeDir = path.join(__dirname, '../../data/knowledge');
-  const knowledge = {};
-  
-  try {
-    const files = fs.readdirSync(knowledgeDir);
-    for (const file of files) {
-      if (file.endsWith('.md')) {
-        const filePath = path.join(knowledgeDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const key = file.replace('.md', '');
-        knowledge[key] = content;
-      }
-    }
-  } catch (error) {
-    console.error('Error loading knowledge base:', error);
-  }
-  
-  return knowledge;
-}
-
-// Determine relevant context based on user message
-function getRelevantContext(userMessage, knowledgeBase) {
-  const message = userMessage.toLowerCase();
-  const relevantContext = [];
-  
-  // Keywords for different knowledge areas
-  const contextMappings = {
-    personal_profile_summary: [
-      'personal', 'profile', 'background', 'about you', 'who are you',
-      'andrey', 'divorce', 'separation', 'marriage', 'relationship',
-      'danielle', 'olga', 'family', 'mother', 'father', 'dad',
-      'london', 'age', 'birthday', 'depression', 'therapy'
-    ],
-    work: [
-      'work', 'job', 'career', 'meta', 'facebook', 'engineer', 'engineering',
-      'metaverse', 'unity', 'game', 'development', 'ai tooling', 'cursor',
-      'staff engineer', 'ic7', 'leave', 'vesting', 'november', 'quit'
-    ],
-    interests: [
-      'interests', 'hobbies', 'basketball', 'exercise', 'fitness', 'calisthenics',
-      'writing', 'drawing', 'music', 'travel', 'hiking', 'philosophy',
-      'world-building', 'creative', 'mastery', 'flow'
-    ]
-  };
-  
-  // Check each knowledge file for relevance
-  for (const [knowledgeKey, keywords] of Object.entries(contextMappings)) {
-    if (knowledgeBase[knowledgeKey]) {
-      const hasMatch = keywords.some(keyword => message.includes(keyword));
-      if (hasMatch) {
-        relevantContext.push({
-          source: knowledgeKey,
-          content: knowledgeBase[knowledgeKey]
-        });
-      }
-    }
-  }
-  
-  // If no specific matches, include personal profile for general context
-  if (relevantContext.length === 0 && knowledgeBase.personal_profile_summary) {
-    relevantContext.push({
-      source: 'personal_profile_summary',
-      content: knowledgeBase.personal_profile_summary
-    });
-  }
-  
-  return relevantContext;
-}
-
-// Build context-aware system prompt
-function buildSystemPrompt(basePrompt, relevantContext) {
-  if (relevantContext.length === 0) {
-    return basePrompt;
-  }
-  
-  let contextPrompt = basePrompt + '\n\n## Relevant Personal Context\n\n';
-  
-  for (const context of relevantContext) {
-    contextPrompt += `### From ${context.source.replace('_', ' ').toUpperCase()}\n`;
-    contextPrompt += context.content + '\n\n';
-  }
-  
-  contextPrompt += 'Use this context to provide more personalized and relevant responses, but only mention personal details when directly relevant to the conversation.\n';
-  
-  return contextPrompt;
-}
+// Initialize knowledge manager
+const knowledgeManager = new KnowledgeManager();
 
 app.use(cors());
 app.use(express.json());
@@ -123,8 +38,6 @@ let sessionUsage = {
   startTime: new Date().toISOString()
 };
 
-// Load knowledge base once at startup
-const knowledgeBase = loadKnowledgeBase();
 
 // Get the appropriate AI provider for a model
 function getModelProvider(modelKey) {
@@ -166,9 +79,8 @@ app.post('/api/chat', async (req, res) => {
     const modelProvider = getModelProvider(model);
     const baseSystemPrompt = getSystemPrompt();
     
-    // Get relevant context and build enhanced system prompt
-    const relevantContext = getRelevantContext(message, knowledgeBase);
-    const systemPrompt = buildSystemPrompt(baseSystemPrompt, relevantContext);
+    // Get enhanced system prompt with relevant context
+    const systemPrompt = knowledgeManager.getEnhancedSystemPrompt(baseSystemPrompt, message);
     
     const result = streamText({
       model: modelProvider,
@@ -207,12 +119,12 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // Usage endpoint
-app.get('/api/usage', (req, res) => {
+app.get('/api/usage', (_, res) => {
   res.json(sessionUsage);
 });
 
 // Reset usage endpoint
-app.post('/api/usage/reset', (req, res) => {
+app.post('/api/usage/reset', (_, res) => {
   sessionUsage = {
     totalCost: 0,
     requests: 0,
