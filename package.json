@@ -14,8 +14,8 @@
     "build:mac": "npm run build:renderer && electron-builder --mac",
     "build:win": "npm run build:renderer && electron-builder --win",
     "build:linux": "npm run build:renderer && electron-builder --linux",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "NODE_ENV=test jest",
+    "test:watch": "NODE_ENV=test jest --watch",
     "test:coverage": "jest --coverage",
     "test:auto": "chokidar \"src/**/*.js\" \"src/**/*.jsx\" \"tests/**/*.js\" \"tests/**/*.jsx\" -c \"npm test\""
   },

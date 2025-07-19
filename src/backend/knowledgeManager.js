@@ -1,34 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { anthropic } = require('@ai-sdk/anthropic');
-const { generateText } = require('ai');
-const { models } = require('../config/models.json');
 
 class KnowledgeManager {
   constructor(knowledgeDir = null) {
     this.knowledgeDir = knowledgeDir || path.join(__dirname, '../../data/knowledge');
     this.knowledgeBase = {};
-    this.knowledgeSummaries = {};
-    this.selectionCache = new Map();
-    this.enableIntelligentSelection = true;
-    this.contextMappings = {
-      personal: [
-        'personal', 'profile', 'background', 'about you', 'who are you',
-        'andrey', 'divorce', 'separation', 'marriage', 'relationship',
-        'danielle', 'olga', 'family', 'mother', 'father', 'dad',
-        'london', 'age', 'birthday', 'depression', 'therapy'
-      ],
-      work: [
-        'work', 'job', 'career', 'meta', 'facebook', 'engineer', 'engineering',
-        'metaverse', 'unity', 'game', 'development', 'ai tooling', 'cursor',
-        'staff engineer', 'ic7', 'leave', 'vesting', 'november', 'quit'
-      ],
-      interests: [
-        'interests', 'hobbies', 'basketball', 'exercise', 'fitness', 'calisthenics',
-        'writing', 'drawing', 'music', 'travel', 'hiking', 'philosophy',
-        'world-building', 'creative', 'mastery', 'flow'
-      ]
-    };
     
     // Automatically load knowledge base on construction
     this.loadKnowledgeBase();
@@ -40,65 +16,38 @@ class KnowledgeManager {
    */
   loadKnowledgeBase() {
     const knowledge = {};
+    const isTest = process.env.NODE_ENV === 'test';
     
     try {
       const files = fs.readdirSync(this.knowledgeDir);
       for (const file of files) {
         if (file.endsWith('.md')) {
-          const filePath = path.join(this.knowledgeDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const key = file.replace('.md', '');
-          knowledge[key] = content;
+          try {
+            const filePath = path.join(this.knowledgeDir, file);
+            const content = fs.readFileSync(filePath, 'utf8');
+            const key = file.replace('.md', '');
+            knowledge[key] = content;
+            if (!isTest) console.log(`📖 Loaded knowledge: ${key}`);
+          } catch (fileError) {
+            if (!isTest) console.error(`Error loading knowledge file ${file}:`, fileError);
+            // Continue loading other files
+          }
         }
       }
     } catch (error) {
-      console.error('Error loading knowledge base:', error);
+      if (!isTest) console.error('Error loading knowledge base:', error);
     }
-    
+
     this.knowledgeBase = knowledge;
+    if (!isTest) console.log(`📚 Knowledge base loaded with ${Object.keys(knowledge).length} files`);
     return knowledge;
   }
 
   /**
-   * Determine relevant context based on user message keywords
-   * @param {string} userMessage - The user's input message
-   * @param {Object} knowledgeBase - Optional knowledge base (uses loaded one if not provided)
-   * @returns {Array} Array of relevant context objects
-   */
-  getRelevantContext(userMessage, knowledgeBase = null) {
-    const knowledge = knowledgeBase || this.knowledgeBase;
-    const message = userMessage.toLowerCase();
-    const relevantContext = [];
-    
-    // Check each knowledge file for relevance
-    for (const [knowledgeKey, keywords] of Object.entries(this.contextMappings)) {
-      if (knowledge[knowledgeKey]) {
-        const hasMatch = keywords.some(keyword => message.includes(keyword));
-        if (hasMatch) {
-          relevantContext.push({
-            source: knowledgeKey,
-            content: knowledge[knowledgeKey]
-          });
-        }
-      }
-    }
-    
-    // If no specific matches, include personal profile for general context
-    if (relevantContext.length === 0 && knowledge.personal) {
-      relevantContext.push({
-        source: 'personal',
-        content: knowledge.personal
-      });
-    }
-    
-    return relevantContext;
-  }
-
-  /**
-   * Build enhanced system prompt with relevant personal context
-   * @param {string} basePrompt - The base system prompt
-   * @param {Array} relevantContext - Array of relevant context objects
-   * @returns {string} Enhanced system prompt with context
+   * Build system prompt with relevant context
+   * @param {string} basePrompt - Base system prompt
+   * @param {Array} relevantContext - Array of context objects with source and content
+   * @returns {string} Enhanced system prompt
    */
   buildSystemPrompt(basePrompt, relevantContext) {
     if (relevantContext.length === 0) {
@@ -112,20 +61,7 @@ class KnowledgeManager {
       contextPrompt += context.content + '\n\n';
     }
     
-    contextPrompt += 'Use this context to provide more personalized and relevant responses, but only mention personal details when directly relevant to the conversation.\n';
-    
     return contextPrompt;
-  }
-
-  /**
-   * Get enhanced system prompt for a user message
-   * @param {string} basePrompt - The base system prompt
-   * @param {string} userMessage - The user's input message
-   * @returns {string} Enhanced system prompt with relevant context
-   */
-  getEnhancedSystemPrompt(basePrompt, userMessage) {
-    const relevantContext = this.getRelevantContext(userMessage);
-    return this.buildSystemPrompt(basePrompt, relevantContext);
   }
 
   /**
@@ -137,228 +73,12 @@ class KnowledgeManager {
   }
 
   /**
-   * Add or update context mapping keywords
-   * @param {string} knowledgeKey - The knowledge file key
-   * @param {Array} keywords - Array of keywords to match
-   */
-  addContextMapping(knowledgeKey, keywords) {
-    this.contextMappings[knowledgeKey] = keywords;
-  }
-
-  /**
-   * Generate summaries of knowledge files for intelligent selection
-   * @returns {Object} Summaries of each knowledge file
-   */
-  async generateKnowledgeSummaries() {
-    if (Object.keys(this.knowledgeSummaries).length > 0) {
-      return this.knowledgeSummaries;
-    }
-
-    const summaries = {};
-    
-    for (const [key, content] of Object.entries(this.knowledgeBase)) {
-      try {
-        const prompt = `Briefly summarize the following personal knowledge file in condenced 2-3 sentences, focusing on the main topics and themes it covers:\n\n${content.substring(0, 1000)}...`;
-        
-        const haikuModel = models['claude-3.5-haiku'];
-        const result = await generateText({
-          model: anthropic(haikuModel.name),
-          prompt,
-          maxTokens: 100
-        });
-        
-        summaries[key] = result.text.trim();
-      } catch (error) {
-        console.error(`Error generating summary for ${key}:`, error);
-        // Fallback to first few lines as summary
-        summaries[key] = content.split('\n').slice(0, 3).join(' ').substring(0, 200) + '...';
-      }
-    }
-    
-    this.knowledgeSummaries = summaries;
-    return summaries;
-  }
-
-  /**
-   * Use GPT-4.1 to intelligently select relevant knowledge files
-   * @param {string} userMessage - The user's input message
-   * @returns {Array} Array of relevant knowledge file keys
-   */
-  async selectRelevantKnowledgeFiles(userMessage) {
-    console.log('🧠 KnowledgeManager: Starting intelligent selection for message:', userMessage.substring(0, 50) + '...');
-    
-    // Check cache first
-    const cacheKey = userMessage.toLowerCase().substring(0, 100);
-    if (this.selectionCache.has(cacheKey)) {
-      const cachedResult = this.selectionCache.get(cacheKey);
-      console.log('📋 KnowledgeManager: Using cached selection:', cachedResult);
-      return cachedResult;
-    }
-
-    if (!this.enableIntelligentSelection) {
-      console.log('🔤 KnowledgeManager: Intelligent selection disabled, falling back to keyword matching');
-      return this.getRelevantContextKeys(userMessage);
-    }
-
-    try {
-      const summaries = await this.generateKnowledgeSummaries();
-      const availableFiles = Object.keys(summaries);
-      
-      if (availableFiles.length === 0) {
-        return [];
-      }
-
-      const summaryText = availableFiles
-        .map(key => `${key}: ${summaries[key]}`)
-        .join('\n');
-
-      const prompt = `Given a user message and available personal knowledge files, select which files are most relevant to include in the context.
-
-User message: "${userMessage}"
-
-Available knowledge files:
-${summaryText}
-
-ONLY respond with thelist of file keys that are relevant, separated by commas. 
-If no files are particularly relevant, respond with "". 
-If the query seems general but requiring personal context, include all keys.
-
-Examples:
-- For work-related queries: "work"
-- For personal questions: "personal"
-- For hobby discussions: "interests"
-- For complex queries with multiple topics: "personal,work,interests"
-- For unrelated queries: ""`;
-
-      console.log('🤖 KnowledgeManager: Sending request to Claude 3.5 Haiku for file selection');
-      
-      const haikuModel = models['claude-3.5-haiku'];
-      const result = await generateText({
-        model: anthropic(haikuModel.name),
-        prompt,
-        maxTokens: 50,
-        temperature: 0.3
-      });
-
-      let selectedFiles = [];
-      const response = result.text.trim().toLowerCase();
-      console.log('🎯 KnowledgeManager: AI response:', response);
-      
-      if (response !== 'none') {
-        selectedFiles = response
-          .split(',')
-          .map(key => key.trim())
-          .filter(key => availableFiles.includes(key));
-      }
-
-      console.log('✅ KnowledgeManager: Final selected files:', selectedFiles);
-      
-      // Cache the result
-      this.selectionCache.set(cacheKey, selectedFiles);
-      console.log('💾 KnowledgeManager: Cached selection for future use');
-      
-      // Clear cache if it gets too large
-      if (this.selectionCache.size > 100) {
-        const keys = Array.from(this.selectionCache.keys());
-        for (let i = 0; i < 20; i++) {
-          this.selectionCache.delete(keys[i]);
-        }
-      }
-
-      return selectedFiles;
-    } catch (error) {
-      console.error('❌ KnowledgeManager: Error in intelligent selection:', error);
-      console.log('🔄 KnowledgeManager: Falling back to keyword-based selection');
-      // Fallback to keyword-based selection
-      return this.getRelevantContextKeys(userMessage);
-    }
-  }
-
-  /**
-   * Get relevant context keys using keyword matching (fallback method)
-   * @param {string} userMessage - The user's input message
-   * @returns {Array} Array of relevant knowledge file keys
-   */
-  getRelevantContextKeys(userMessage) {
-    const message = userMessage.toLowerCase();
-    const relevantKeys = [];
-    
-    for (const [knowledgeKey, keywords] of Object.entries(this.contextMappings)) {
-      if (this.knowledgeBase[knowledgeKey]) {
-        const hasMatch = keywords.some(keyword => message.includes(keyword));
-        if (hasMatch) {
-          relevantKeys.push(knowledgeKey);
-        }
-      }
-    }
-    
-    // If no specific matches, include personal profile for general context
-    if (relevantKeys.length === 0 && this.knowledgeBase.personal) {
-      relevantKeys.push('personal');
-    }
-    
-    return relevantKeys;
-  }
-
-  /**
-   * Enhanced method to get relevant context using intelligent selection
-   * @param {string} userMessage - The user's input message
-   * @param {Object} knowledgeBase - Optional knowledge base (uses loaded one if not provided)
-   * @returns {Array} Array of relevant context objects
-   */
-  async getRelevantContextIntelligent(userMessage, knowledgeBase = null) {
-    const knowledge = knowledgeBase || this.knowledgeBase;
-    
-    const selectedKeys = await this.selectRelevantKnowledgeFiles(userMessage);
-    console.log('📚 KnowledgeManager: Building context from selected files:', selectedKeys);
-    const relevantContext = [];
-    
-    for (const key of selectedKeys) {
-      if (knowledge[key]) {
-        relevantContext.push({
-          source: key,
-          content: knowledge[key]
-        });
-      }
-    }
-    
-    return relevantContext;
-  }
-
-  /**
-   * Enhanced method to get system prompt with intelligent context selection
-   * @param {string} basePrompt - The base system prompt
-   * @param {string} userMessage - The user's input message
-   * @returns {string} Enhanced system prompt with relevant context
-   */
-  async getEnhancedSystemPromptIntelligent(basePrompt, userMessage) {
-    const relevantContext = await this.getRelevantContextIntelligent(userMessage);
-    return this.buildSystemPrompt(basePrompt, relevantContext);
-  }
-
-  /**
-   * Toggle intelligent selection on/off
-   * @param {boolean} enabled - Whether to enable intelligent selection
-   */
-  setIntelligentSelection(enabled) {
-    this.enableIntelligentSelection = enabled;
-  }
-
-  /**
-   * Clear the selection cache
-   */
-  clearCache() {
-    this.selectionCache.clear();
-    this.knowledgeSummaries = {};
-  }
-
-  /**
-   * Reload knowledge base (useful for development/testing)
-   * @returns {Object} Reloaded knowledge base
+   * Reload knowledge base from files
    */
   reload() {
-    this.clearCache();
-    return this.loadKnowledgeBase();
+    const isTest = process.env.NODE_ENV === 'test';
+    if (!isTest) console.log('🔄 Reloading knowledge base...');
+    this.loadKnowledgeBase();
   }
 }
 

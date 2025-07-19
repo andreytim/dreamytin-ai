@@ -49,6 +49,16 @@ describe('KnowledgeManager', () => {
         work: 'Work content'
       });
     });
+
+    it('should handle initialization errors gracefully', () => {
+      fs.readdirSync.mockImplementation(() => {
+        throw new Error('Directory not found');
+      });
+      
+      knowledgeManager = new KnowledgeManager();
+      
+      expect(knowledgeManager.getKnowledgeBase()).toEqual({});
+    });
   });
 
   describe('loadKnowledgeBase', () => {
@@ -56,130 +66,62 @@ describe('KnowledgeManager', () => {
       knowledgeManager = new KnowledgeManager();
     });
 
-    it('should load markdown files correctly', () => {
-      fs.readdirSync.mockReturnValue(['personal.md', 'work.md', 'readme.txt']);
-      fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('personal.md')) {
-          return 'Personal profile content';
-        }
-        if (filePath.includes('work.md')) {
-          return 'Work information';
-        }
-        return '';
-      });
+    it('should load all markdown files from knowledge directory', () => {
+      fs.readdirSync.mockReturnValue(['personal.md', 'work.md', 'interests.md', 'readme.txt']);
+      fs.readFileSync
+        .mockReturnValueOnce('Personal info about user')
+        .mockReturnValueOnce('Work history and career details')
+        .mockReturnValueOnce('Hobbies and interests');
 
       const result = knowledgeManager.loadKnowledgeBase();
 
+      expect(fs.readdirSync).toHaveBeenCalledWith(knowledgeManager.knowledgeDir);
+      expect(fs.readFileSync).toHaveBeenCalledTimes(3); // Only .md files
       expect(result).toEqual({
-        personal: 'Personal profile content',
-        work: 'Work information'
+        personal: 'Personal info about user',
+        work: 'Work history and career details',  
+        interests: 'Hobbies and interests'
       });
-      expect(fs.readFileSync).toHaveBeenCalledTimes(2); // Only .md files
+    });
+
+    it('should ignore non-markdown files', () => {
+      fs.readdirSync.mockReturnValue(['personal.md', 'config.json', 'readme.txt', 'work.md']);
+      fs.readFileSync
+        .mockReturnValueOnce('Personal content')
+        .mockReturnValueOnce('Work content');
+
+      const result = knowledgeManager.loadKnowledgeBase();
+
+      expect(fs.readFileSync).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        personal: 'Personal content',
+        work: 'Work content'
+      });
+    });
+
+    it('should handle file read errors gracefully', () => {
+      fs.readdirSync.mockReturnValue(['personal.md', 'work.md']);
+      fs.readFileSync
+        .mockReturnValueOnce('Personal content')
+        .mockImplementationOnce(() => { throw new Error('File read error'); });
+
+      const result = knowledgeManager.loadKnowledgeBase();
+
+      // Should still load the successful file
+      expect(result).toEqual({
+        personal: 'Personal content'
+      });
     });
 
     it('should handle directory read errors gracefully', () => {
       fs.readdirSync.mockImplementation(() => {
-        throw new Error('ENOENT: no such file or directory');
+        throw new Error('Directory not accessible');
       });
-      
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       const result = knowledgeManager.loadKnowledgeBase();
-      
+
       expect(result).toEqual({});
-      expect(consoleSpy).toHaveBeenCalled();
-      
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('getRelevantContext', () => {
-    beforeEach(() => {
-      knowledgeManager = new KnowledgeManager();
-      knowledgeManager.knowledgeBase = {
-        personal: 'Personal details about Andrey',
-        work: 'Meta engineering work',
-        interests: 'Basketball and creative pursuits'
-      };
-    });
-
-    it('should detect personal context keywords', () => {
-      const testCases = [
-        'Tell me about your personal background',
-        'Who are you?',
-        'What about your family?',
-        'How is Andrey doing?'
-      ];
-
-      testCases.forEach(message => {
-        const result = knowledgeManager.getRelevantContext(message);
-        expect(result.some(ctx => ctx.source === 'personal')).toBe(true);
-      });
-    });
-
-    it('should detect work context keywords', () => {
-      const testCases = [
-        'What is your job?',
-        'Tell me about Meta',
-        'How is your engineering career?',
-        'When did you quit?'
-      ];
-
-      testCases.forEach(message => {
-        const result = knowledgeManager.getRelevantContext(message);
-        expect(result.some(ctx => ctx.source === 'work')).toBe(true);
-      });
-    });
-
-    it('should detect interests context keywords', () => {
-      const testCases = [
-        'What are your hobbies?',
-        'Do you play basketball?',
-        'Tell me about your interests',
-        'What do you like to do for exercise?'
-      ];
-
-      testCases.forEach(message => {
-        const result = knowledgeManager.getRelevantContext(message);
-        expect(result.some(ctx => ctx.source === 'interests')).toBe(true);
-      });
-    });
-
-    it('should return default context for generic messages', () => {
-      const result = knowledgeManager.getRelevantContext('What is the weather like?');
-      
-      expect(result).toHaveLength(1);
-      expect(result[0].source).toBe('personal');
-    });
-
-    it('should handle multiple matching contexts', () => {
-      const result = knowledgeManager.getRelevantContext('Tell me about Andrey the engineer');
-      
-      expect(result.length).toBeGreaterThan(1);
-      const sources = result.map(ctx => ctx.source);
-      expect(sources).toContain('personal');
-      expect(sources).toContain('work');
-    });
-
-    it('should return empty array when no knowledge base exists', () => {
-      knowledgeManager.knowledgeBase = {};
-      const result = knowledgeManager.getRelevantContext('Hello');
-      
-      expect(result).toHaveLength(0);
-    });
-
-    it('should accept custom knowledge base parameter', () => {
-      const customKnowledge = {
-        custom_topic: 'Custom content'
-      };
-      
-      // Add custom mapping for testing
-      knowledgeManager.addContextMapping('custom_topic', ['custom']);
-      
-      const result = knowledgeManager.getRelevantContext('Tell me about custom', customKnowledge);
-      
-      expect(result).toHaveLength(1);
-      expect(result[0].source).toBe('custom_topic');
+      expect(knowledgeManager.getKnowledgeBase()).toEqual({});
     });
   });
 
@@ -188,16 +130,17 @@ describe('KnowledgeManager', () => {
       knowledgeManager = new KnowledgeManager();
     });
 
-    const basePrompt = 'You are a helpful AI assistant.';
-
     it('should return base prompt when no context provided', () => {
+      const basePrompt = 'You are a helpful assistant.';
       const result = knowledgeManager.buildSystemPrompt(basePrompt, []);
+      
       expect(result).toBe(basePrompt);
     });
 
-    it('should properly format context sections', () => {
+    it('should build enhanced prompt with single context', () => {
+      const basePrompt = 'You are a helpful assistant.';
       const context = [
-        { source: 'personal', content: 'Personal info here' }
+        { source: 'personal', content: 'User is a software engineer living in London.' }
       ];
       
       const result = knowledgeManager.buildSystemPrompt(basePrompt, context);
@@ -205,75 +148,73 @@ describe('KnowledgeManager', () => {
       expect(result).toContain(basePrompt);
       expect(result).toContain('## Relevant personal context of the user you are talking to');
       expect(result).toContain('### From PERSONAL');
-      expect(result).toContain('Personal info here');
-      expect(result).toContain('Use this context to provide more personalized');
+      expect(result).toContain('User is a software engineer living in London.');
     });
 
-    it('should handle multiple contexts', () => {
+    it('should build enhanced prompt with multiple contexts', () => {
+      const basePrompt = 'You are a helpful assistant.';
       const contexts = [
-        { source: 'personal', content: 'Personal details' },
-        { source: 'work', content: 'Work details' }
+        { source: 'personal', content: 'Lives in London, age 35.' },
+        { source: 'work', content: 'Software engineer at Meta.' },
+        { source: 'interests', content: 'Enjoys basketball and philosophy.' }
       ];
       
       const result = knowledgeManager.buildSystemPrompt(basePrompt, contexts);
       
       expect(result).toContain('### From PERSONAL');
-      expect(result).toContain('Personal details');
       expect(result).toContain('### From WORK');
-      expect(result).toContain('Work details');
+      expect(result).toContain('### From INTERESTS');
+      expect(result).toContain('Lives in London, age 35.');
+      expect(result).toContain('Software engineer at Meta.');
+      expect(result).toContain('Enjoys basketball and philosophy.');
     });
 
-    it('should properly format source names with underscores', () => {
+    it('should handle context source names with underscores', () => {
+      const basePrompt = 'You are a helpful assistant.';
       const context = [
-        { source: 'personal', content: 'Content' }
+        { source: 'work_history', content: 'Previous job details.' }
       ];
       
       const result = knowledgeManager.buildSystemPrompt(basePrompt, context);
       
-      expect(result).toContain('PERSONAL');
-      expect(result).not.toContain('personal_profile_summary');
+      expect(result).toContain('### From WORK HISTORY');
     });
   });
 
-  describe('getEnhancedSystemPrompt', () => {
-    beforeEach(() => {
+  describe('getKnowledgeBase', () => {
+    it('should return the current knowledge base', () => {
+      fs.readdirSync.mockReturnValue(['personal.md']);
+      fs.readFileSync.mockReturnValue('Personal data');
+      
       knowledgeManager = new KnowledgeManager();
-      knowledgeManager.knowledgeBase = {
-        work: 'Work details'
-      };
-    });
-
-    it('should combine context detection and prompt building', () => {
-      const basePrompt = 'You are helpful.';
-      const userMessage = 'Tell me about your work';
+      const result = knowledgeManager.getKnowledgeBase();
       
-      const result = knowledgeManager.getEnhancedSystemPrompt(basePrompt, userMessage);
-      
-      expect(result).toContain(basePrompt);
-      expect(result).toContain('## Relevant personal context of the user you are talking to');
-      expect(result).toContain('Work details');
+      expect(result).toEqual({
+        personal: 'Personal data'
+      });
     });
   });
 
-  describe('utility methods', () => {
+  describe('reload', () => {
     beforeEach(() => {
+      fs.readdirSync.mockReturnValue(['initial.md']);
+      fs.readFileSync.mockReturnValue('Initial content');
       knowledgeManager = new KnowledgeManager();
     });
 
-    it('should allow adding custom context mappings', () => {
-      knowledgeManager.addContextMapping('custom', ['keyword1', 'keyword2']);
+    it('should reload knowledge base from files', () => {
+      // Change the mock to return different data
+      fs.readdirSync.mockReturnValue(['updated.md', 'new.md']);
+      fs.readFileSync
+        .mockReturnValueOnce('Updated content')
+        .mockReturnValueOnce('New content');
       
-      expect(knowledgeManager.contextMappings.custom).toEqual(['keyword1', 'keyword2']);
-    });
-
-    it('should allow reloading knowledge base', () => {
-      fs.readdirSync.mockReturnValue(['new_file.md']);
-      fs.readFileSync.mockReturnValue('New content');
+      knowledgeManager.reload();
       
-      const result = knowledgeManager.reload();
-      
-      expect(result).toEqual({ new_file: 'New content' });
-      expect(knowledgeManager.getKnowledgeBase()).toEqual({ new_file: 'New content' });
+      expect(knowledgeManager.getKnowledgeBase()).toEqual({
+        updated: 'Updated content',
+        new: 'New content'
+      });
     });
   });
 });
