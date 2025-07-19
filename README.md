@@ -111,11 +111,16 @@ The default model is automatically selected when the application starts.
 The AI assistant's behavior is controlled by a system prompt stored in `data/system-prompt.md`. This file contains the core instructions that define the assistant's personality, capabilities, and response style. The system prompt is automatically loaded and applied to all AI interactions across different models.
 
 ### Personal Knowledge Base
-The application includes an intelligent knowledge injection system that personalizes AI responses based on contextual information stored in markdown files.
+The application includes an **intelligent knowledge injection system** powered by the **KnowledgeManager** class that personalizes AI responses using **AI-powered dynamic file selection** and contextual information stored in markdown files.
 
+**Architecture**: `src/backend/knowledgeManager.js`  
 **Knowledge Directory**: `data/knowledge/`
 
-The system automatically loads all `.md` files from the knowledge directory and intelligently injects relevant context based on user message keywords. This enables the AI to provide personalized, contextually-aware responses.
+The **KnowledgeManager** features a **dual-mode selection system**:
+1. **🤖 Intelligent Selection** - Uses Claude 3.5 Haiku to analyze user queries and dynamically select the most relevant knowledge files
+2. **🔤 Keyword Fallback** - Traditional keyword matching as backup for reliability
+
+This hybrid approach ensures cost-effective, intelligent context selection while maintaining system reliability.
 
 **Supported Knowledge Categories:**
 - `personal.md` - Personal background, family, location details
@@ -123,10 +128,25 @@ The system automatically loads all `.md` files from the knowledge directory and 
 - `interests.md` - Hobbies, activities, personal interests
 
 **How it works:**
-1. **Keyword Detection** - The system analyzes user messages for relevant keywords
-2. **Context Selection** - Automatically selects appropriate knowledge files based on message content
-3. **Smart Injection** - Enhances the system prompt with relevant personal context
-4. **Fallback Behavior** - Uses personal profile as default context for general conversations
+
+**🤖 Intelligent Mode:**
+1. **Auto-Loading** - KnowledgeManager loads all `.md` files at server startup
+2. **AI Analysis** - Claude 3.5 Haiku analyzes user message and knowledge file summaries
+3. **Dynamic Selection** - AI intelligently selects most relevant files based on semantic understanding
+4. **Smart Caching** - Results cached to minimize API costs for similar queries
+5. **Context Injection** - Selected knowledge enhances system prompt with precise relevance
+
+**🔤 Keyword Fallback Mode:**
+1. **Keyword Matching** - Analyzes messages against predefined keyword mappings  
+2. **Multi-File Selection** - Selects multiple knowledge files when keywords match
+3. **Fallback Behavior** - Uses personal profile as default for general conversations
+
+**Technical Implementation:**
+- **Dual-Mode Architecture** - AI-powered + keyword fallback with seamless switching
+- **Cost Optimization** - Smart caching and efficient Claude 3.5 Haiku usage
+- **Full Test Coverage** - 19 comprehensive tests ensuring reliability
+- **Runtime Control** - Toggle between intelligent/keyword modes via API
+- **Dynamic Loading** - Runtime knowledge base updates with `reload()` method
 
 **Example Keywords:**
 - Personal: "personal", "family", "background", "who are you"
@@ -134,7 +154,27 @@ The system automatically loads all `.md` files from the knowledge directory and 
 - Interests: "hobbies", "interests", "basketball", "exercise"
 
 **Adding Knowledge:**
-Simply create new `.md` files in `data/knowledge/` - they will be automatically loaded on server startup. The filename (without `.md`) becomes the knowledge category key.
+1. Create new `.md` files in `data/knowledge/` - they will be automatically loaded on server startup
+2. The filename (without `.md`) becomes the knowledge category key
+3. Add keyword mappings to `KnowledgeManager.contextMappings` for semantic detection
+4. Optionally use `knowledgeManager.addContextMapping(key, keywords)` for runtime updates
+
+**API Configuration Endpoints:**
+- `GET /api/knowledge/config` - View current system status and settings
+- `POST /api/knowledge/config` - Toggle intelligent selection on/off
+- `POST /api/knowledge/cache/clear` - Clear AI selection cache
+- `POST /api/knowledge/reload` - Reload knowledge base from files
+
+**Selection Comparison Examples:**
+```
+Query: "Tell me about your work at Meta"
+🤖 Intelligent: [work] - AI focuses on work-specific context
+🔤 Keyword: [personal, work] - Keywords match multiple files
+
+Query: "What's the weather today?"  
+🤖 Intelligent: [personal] - AI provides general personal context
+🔤 Keyword: [personal] - Falls back to personal default
+```
 
 ## Development vs Production
 The application now uses a unified architecture where the backend runs embedded within the Electron main process in both development and production modes. This ensures:
