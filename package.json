@@ -71,7 +71,8 @@
       {
         "from": "src/config",
         "to": "config"
-      }
+      },
+      ".env"
     ]
   }
 }
