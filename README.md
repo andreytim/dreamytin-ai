@@ -6,9 +6,9 @@ A desktop application serving as an ongoing life assistant with persistent knowl
 
 ## Tech Stack
 - **Frontend**: Electron + React + Vite
-- **Backend**: Express.js server
-- **AI Models**: AI SDK (supports OpenAI, Anthropic, local models)
-- **Build Tools**: Vite for fast development, Concurrently for parallel processes
+- **Backend**: Express.js server (embedded in Electron main process)
+- **AI Models**: AI SDK (supports OpenAI, Anthropic, Google)
+- **Build Tools**: Vite for fast development, Electron Builder for standalone packaging
 - **Storage**: Simple text files (JSON/Markdown)
 
 ## Architecture
@@ -31,23 +31,39 @@ A desktop application serving as an ongoing life assistant with persistent knowl
 ### Backend (`src/backend/`)
 - **server.js** - Express server with multi-provider AI support and streaming responses
 - Multi-provider routing (OpenAI, Anthropic, Google) with automatic API key validation
+- Runs embedded within Electron main process for unified dev/production architecture
 
 ### Configuration (`src/config/`)
 - **models.json** - Centralized model configuration with provider mappings
 
 ## Key Features
 - Multi-provider AI model switching with dropdown selection in header
+- Session-based cost tracking with real-time usage display
+- Streaming AI responses with markdown support
 - Persistent conversation memory
 - Personal knowledge base
 - Finance management
 - Tech news monitoring
 - Local data storage
+- Standalone desktop app builds for distribution
 
 ## Getting Started
 ```bash
 npm install
-npm run dev      # Starts both backend server and Electron app with hot reloading
+npm run dev      # Starts Electron app with embedded backend and hot reloading
 ```
+
+## Building Standalone App
+Create distributable desktop applications:
+
+```bash
+npm run build:mac     # Build for macOS (.dmg and .zip)
+npm run build:win     # Build for Windows (.exe)
+npm run build:linux   # Build for Linux (.AppImage)
+npm run build         # Build for current platform
+```
+
+The built app will include both frontend and backend, requiring no separate server setup.
 
 ## Testing
 The project includes comprehensive unit and integration testing. For detailed testing information, see [TESTING.md](./TESTING.md).
@@ -73,8 +89,8 @@ GOOGLE_GENERATIVE_AI_API_KEY=your_google_key_here
 The application supports multiple AI providers: OpenAI, Anthropic, and Google.
 
 ### Available Models
-- **OpenAI**: `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`, `gpt-4o`, `gpt-3.5-turbo`
-- **Anthropic**: `claude-3.5-sonnet`, `claude-3-sonnet`, `claude-3-haiku`  
+- **OpenAI**: `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`
+- **Anthropic**: `claude-opus-4`, `claude-sonnet-4`, `claude-3.5-haiku`
 - **Google**: `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-1.5-flash`
 
 ### Model Selection
@@ -90,3 +106,11 @@ Edit `src/config/models.json`:
 ```
 
 The default model is automatically selected when the application starts.
+
+## Development vs Production
+The application now uses a unified architecture where the backend runs embedded within the Electron main process in both development and production modes. This ensures:
+
+- **Consistent behavior** between dev and production builds
+- **Easier debugging** with the same architecture in both environments  
+- **Simplified deployment** as standalone executable with no external dependencies
+- **Environment variables** properly loaded and passed to the embedded backend
