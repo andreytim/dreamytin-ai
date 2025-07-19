@@ -119,13 +119,29 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // Knowledge system configuration endpoints
-app.get('/api/knowledge/config', (_, res) => {
-  res.json({
-    intelligentSelection: knowledgeManager.enableIntelligentSelection,
-    cacheSize: knowledgeManager.selectionCache.size,
-    availableFiles: Object.keys(knowledgeManager.knowledgeBase),
-    summariesGenerated: Object.keys(knowledgeManager.knowledgeSummaries).length > 0
-  });
+app.get('/api/knowledge/config', async (_, res) => {
+  try {
+    // Generate summaries if they don't exist
+    const summaries = await knowledgeManager.generateKnowledgeSummaries();
+    
+    res.json({
+      intelligentSelection: knowledgeManager.enableIntelligentSelection,
+      cacheSize: knowledgeManager.selectionCache.size,
+      availableFiles: Object.keys(knowledgeManager.knowledgeBase),
+      summariesGenerated: Object.keys(knowledgeManager.knowledgeSummaries).length > 0,
+      summaries: summaries
+    });
+  } catch (error) {
+    console.error('Error getting knowledge config:', error);
+    res.json({
+      intelligentSelection: knowledgeManager.enableIntelligentSelection,
+      cacheSize: knowledgeManager.selectionCache.size,
+      availableFiles: Object.keys(knowledgeManager.knowledgeBase),
+      summariesGenerated: false,
+      summaries: {},
+      error: error.message
+    });
+  }
 });
 
 app.post('/api/knowledge/config', (req, res) => {

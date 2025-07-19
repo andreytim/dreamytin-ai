@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { anthropic } = require('@ai-sdk/anthropic');
 const { generateText } = require('ai');
+const { models } = require('../config/models.json');
 
 class KnowledgeManager {
   constructor(knowledgeDir = null) {
@@ -157,10 +158,11 @@ class KnowledgeManager {
     
     for (const [key, content] of Object.entries(this.knowledgeBase)) {
       try {
-        const prompt = `Summarize the following personal knowledge file in 2-3 sentences, focusing on the main topics and themes it covers:\n\n${content.substring(0, 1000)}...`;
+        const prompt = `Briefly summarize the following personal knowledge file in condenced 2-3 sentences, focusing on the main topics and themes it covers:\n\n${content.substring(0, 1000)}...`;
         
+        const haikuModel = models['claude-3.5-haiku'];
         const result = await generateText({
-          model: anthropic('claude-3-5-haiku-20241022'),
+          model: anthropic(haikuModel.name),
           prompt,
           maxTokens: 100
         });
@@ -183,13 +185,18 @@ class KnowledgeManager {
    * @returns {Array} Array of relevant knowledge file keys
    */
   async selectRelevantKnowledgeFiles(userMessage) {
+    console.log('🧠 KnowledgeManager: Starting intelligent selection for message:', userMessage.substring(0, 50) + '...');
+    
     // Check cache first
     const cacheKey = userMessage.toLowerCase().substring(0, 100);
     if (this.selectionCache.has(cacheKey)) {
-      return this.selectionCache.get(cacheKey);
+      const cachedResult = this.selectionCache.get(cacheKey);
+      console.log('📋 KnowledgeManager: Using cached selection:', cachedResult);
+      return cachedResult;
     }
 
     if (!this.enableIntelligentSelection) {
+      console.log('🔤 KnowledgeManager: Intelligent selection disabled, falling back to keyword matching');
       return this.getRelevantContextKeys(userMessage);
     }
 
@@ -212,19 +219,22 @@ User message: "${userMessage}"
 Available knowledge files:
 ${summaryText}
 
-Respond with only the file keys that are relevant, separated by commas. If no files are particularly relevant, respond with "none". If the query seems general or personal, include "personal" as a default.
+ONLY respond with thelist of file keys that are relevant, separated by commas. 
+If no files are particularly relevant, respond with "". 
+If the query seems general but requiring personal context, include all keys.
 
 Examples:
 - For work-related queries: "work"
 - For personal questions: "personal"
 - For hobby discussions: "interests"
-- For complex queries: "personal,work" or "personal,interests"
-- For unrelated queries: "none"
+- For complex queries with multiple topics: "personal,work,interests"
+- For unrelated queries: ""`;
 
-File keys to include:`;
-
+      console.log('🤖 KnowledgeManager: Sending request to Claude 3.5 Haiku for file selection');
+      
+      const haikuModel = models['claude-3.5-haiku'];
       const result = await generateText({
-        model: anthropic('claude-3-5-haiku-20241022'),
+        model: anthropic(haikuModel.name),
         prompt,
         maxTokens: 50,
         temperature: 0.3
@@ -232,6 +242,7 @@ File keys to include:`;
 
       let selectedFiles = [];
       const response = result.text.trim().toLowerCase();
+      console.log('🎯 KnowledgeManager: AI response:', response);
       
       if (response !== 'none') {
         selectedFiles = response
@@ -240,8 +251,11 @@ File keys to include:`;
           .filter(key => availableFiles.includes(key));
       }
 
+      console.log('✅ KnowledgeManager: Final selected files:', selectedFiles);
+      
       // Cache the result
       this.selectionCache.set(cacheKey, selectedFiles);
+      console.log('💾 KnowledgeManager: Cached selection for future use');
       
       // Clear cache if it gets too large
       if (this.selectionCache.size > 100) {
@@ -253,7 +267,8 @@ File keys to include:`;
 
       return selectedFiles;
     } catch (error) {
-      console.error('Error in intelligent knowledge file selection:', error);
+      console.error('❌ KnowledgeManager: Error in intelligent selection:', error);
+      console.log('🔄 KnowledgeManager: Falling back to keyword-based selection');
       // Fallback to keyword-based selection
       return this.getRelevantContextKeys(userMessage);
     }
@@ -295,6 +310,7 @@ File keys to include:`;
     const knowledge = knowledgeBase || this.knowledgeBase;
     
     const selectedKeys = await this.selectRelevantKnowledgeFiles(userMessage);
+    console.log('📚 KnowledgeManager: Building context from selected files:', selectedKeys);
     const relevantContext = [];
     
     for (const key of selectedKeys) {
