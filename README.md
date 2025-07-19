@@ -34,5 +34,15 @@ npm install
 npm run dev      # Starts both backend server and Electron app with hot reloading
 ```
 
+## Testing
+The project includes comprehensive unit and integration testing. For detailed testing information, see [TESTING.md](./TESTING.md).
+
+**Quick testing commands:**
+```bash
+npm test              # Run all tests
+npm run test:watch    # Run tests in watch mode
+npm run test:auto     # Auto-run tests on file changes
+```
+
 ## Configuration
 Environment variables are configured in the `.env` file. Update with your API keys as needed.
