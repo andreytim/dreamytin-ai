@@ -232,17 +232,40 @@ app.get('/api/usage', (_, res) => {
   res.json(sessionUsage);
 });
 
-// Context size endpoint
+// Context size endpoint  
 app.get('/api/context/:sessionId', (req, res) => {
   const { sessionId } = req.params;
+  const { useFullContext } = req.query;
   const conversation = conversations.get(sessionId) || [];
-  const tokenCount = conversation.reduce((total, msg) => total + estimateTokens(msg.content), 0);
+  
+  // Calculate conversation tokens
+  const userTokens = conversation
+    .filter(msg => msg.role === 'user')
+    .reduce((total, msg) => total + estimateTokens(msg.content), 0);
+  
+  const outputTokens = conversation
+    .filter(msg => msg.role === 'assistant')
+    .reduce((total, msg) => total + estimateTokens(msg.content), 0);
+  
+  // Estimate system prompt + knowledge tokens (input overhead)
+  const baseSystemPrompt = getSystemPrompt();
+  let systemTokens = estimateTokens(baseSystemPrompt);
+  
+  // Add knowledge tokens if Full Context is enabled and it's not empty conversation
+  if (useFullContext === 'true' && conversation.length > 0) {
+    const allKnowledge = Object.values(knowledgeManager.knowledgeBase).join('\n');
+    systemTokens += estimateTokens(allKnowledge);
+  }
+  
+  const inputTokens = userTokens + systemTokens;
   
   res.json({
     sessionId,
     messageCount: conversation.length,
-    tokenCount,
-    estimatedTokens: tokenCount
+    tokenCount: inputTokens + outputTokens, // Total for backward compatibility
+    inputTokens,
+    outputTokens,
+    systemTokens // For debugging
   });
 });
 

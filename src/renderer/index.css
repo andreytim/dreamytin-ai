@@ -70,6 +70,14 @@ body {
   margin-left: 8px;
 }
 
+.tokens-in {
+  color: #ff6b6b; /* Red for input tokens */
+}
+
+.tokens-out {
+  color: #4ecdc4; /* Teal for output tokens */
+}
+
 .reset-button {
   background: none;
   border: 1px solid #ddd;

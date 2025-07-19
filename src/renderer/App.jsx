@@ -56,7 +56,7 @@ function App() {
   // Fetch context size
   const fetchContextSize = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/context/${sessionId}`)
+      const response = await fetch(`http://localhost:3001/api/context/${sessionId}?useFullContext=${useFullContext}`)
       if (response.ok) {
         const contextData = await response.json()
         setContextSize(contextData)
@@ -158,7 +158,9 @@ function App() {
           <div className="usage-display">
             <span className="usage-cost">${usage.totalCost.toFixed(4)}</span>
             <span className="usage-requests">({usage.requests} requests)</span>
-            <span className="context-size">{formatTokens(contextSize.tokenCount)}/{formatTokens(getCurrentModelLimit())} tk</span>
+            <span className="context-size">
+              <span className="tokens-in">{formatTokens(contextSize.inputTokens || 0)} in</span> / <span className="tokens-out">{formatTokens(contextSize.outputTokens || 0)} out</span> tk
+            </span>
           </div>
           <div className="knowledge-selector">
             <label className="checkbox-label">
@@ -176,7 +178,7 @@ function App() {
               onChange={(e) => {
                 setSelectedModel(e.target.value)
                 setMessages([])
-                setContextSize({ tokenCount: 0, messageCount: 0 }) // Reset context display
+                setContextSize({ tokenCount: 0, messageCount: 0, inputTokens: 0, outputTokens: 0 }) // Reset context display
                 setSessionId(Math.random().toString(36).substr(2, 9)) // Generate new session
                 resetUsage() // Reset cost tracking for new model
               }}
