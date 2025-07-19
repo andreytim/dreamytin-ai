@@ -101,11 +101,14 @@ Edit `src/config/models.json`:
 
 ```json
 {
-  "defaultModel": "gpt-4.1"
+  "defaultModel": "claude-3.5-haiku"
 }
 ```
 
 The default model is automatically selected when the application starts.
+
+### System Prompt Configuration
+The AI assistant's behavior is controlled by a system prompt stored in `data/system-prompt.md`. This file contains the core instructions that define the assistant's personality, capabilities, and response style. The system prompt is automatically loaded and applied to all AI interactions across different models.
 
 ## Development vs Production
 The application now uses a unified architecture where the backend runs embedded within the Electron main process in both development and production modes. This ensures:
