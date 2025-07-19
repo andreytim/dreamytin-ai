@@ -6,7 +6,7 @@ class KnowledgeManager {
     this.knowledgeDir = knowledgeDir || path.join(__dirname, '../../data/knowledge');
     this.knowledgeBase = {};
     this.contextMappings = {
-      personal_profile_summary: [
+      personal: [
         'personal', 'profile', 'background', 'about you', 'who are you',
         'andrey', 'divorce', 'separation', 'marriage', 'relationship',
         'danielle', 'olga', 'family', 'mother', 'father', 'dad',
@@ -78,10 +78,10 @@ class KnowledgeManager {
     }
     
     // If no specific matches, include personal profile for general context
-    if (relevantContext.length === 0 && knowledge.personal_profile_summary) {
+    if (relevantContext.length === 0 && knowledge.personal) {
       relevantContext.push({
-        source: 'personal_profile_summary',
-        content: knowledge.personal_profile_summary
+        source: 'personal',
+        content: knowledge.personal
       });
     }
     

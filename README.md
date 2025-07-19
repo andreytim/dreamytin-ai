@@ -118,7 +118,7 @@ The application includes an intelligent knowledge injection system that personal
 The system automatically loads all `.md` files from the knowledge directory and intelligently injects relevant context based on user message keywords. This enables the AI to provide personalized, contextually-aware responses.
 
 **Supported Knowledge Categories:**
-- `personal_profile_summary.md` - Personal background, family, location details
+- `personal.md` - Personal background, family, location details
 - `work.md` - Career information, job history, professional context
 - `interests.md` - Hobbies, activities, personal interests
 

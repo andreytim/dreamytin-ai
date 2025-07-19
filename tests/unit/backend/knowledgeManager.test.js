@@ -21,7 +21,7 @@ describe('KnowledgeManager', () => {
 
   describe('constructor and initialization', () => {
     it('should initialize with default knowledge directory', () => {
-      fs.readdirSync.mockReturnValue(['personal_profile_summary.md']);
+      fs.readdirSync.mockReturnValue(['personal.md']);
       fs.readFileSync.mockReturnValue('Personal content');
       
       knowledgeManager = new KnowledgeManager();
@@ -57,9 +57,9 @@ describe('KnowledgeManager', () => {
     });
 
     it('should load markdown files correctly', () => {
-      fs.readdirSync.mockReturnValue(['personal_profile_summary.md', 'work.md', 'readme.txt']);
+      fs.readdirSync.mockReturnValue(['personal.md', 'work.md', 'readme.txt']);
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath.includes('personal_profile_summary.md')) {
+        if (filePath.includes('personal.md')) {
           return 'Personal profile content';
         }
         if (filePath.includes('work.md')) {
@@ -71,7 +71,7 @@ describe('KnowledgeManager', () => {
       const result = knowledgeManager.loadKnowledgeBase();
 
       expect(result).toEqual({
-        personal_profile_summary: 'Personal profile content',
+        personal: 'Personal profile content',
         work: 'Work information'
       });
       expect(fs.readFileSync).toHaveBeenCalledTimes(2); // Only .md files
@@ -97,7 +97,7 @@ describe('KnowledgeManager', () => {
     beforeEach(() => {
       knowledgeManager = new KnowledgeManager();
       knowledgeManager.knowledgeBase = {
-        personal_profile_summary: 'Personal details about Andrey',
+        personal: 'Personal details about Andrey',
         work: 'Meta engineering work',
         interests: 'Basketball and creative pursuits'
       };
@@ -113,7 +113,7 @@ describe('KnowledgeManager', () => {
 
       testCases.forEach(message => {
         const result = knowledgeManager.getRelevantContext(message);
-        expect(result.some(ctx => ctx.source === 'personal_profile_summary')).toBe(true);
+        expect(result.some(ctx => ctx.source === 'personal')).toBe(true);
       });
     });
 
@@ -149,7 +149,7 @@ describe('KnowledgeManager', () => {
       const result = knowledgeManager.getRelevantContext('What is the weather like?');
       
       expect(result).toHaveLength(1);
-      expect(result[0].source).toBe('personal_profile_summary');
+      expect(result[0].source).toBe('personal');
     });
 
     it('should handle multiple matching contexts', () => {
@@ -157,7 +157,7 @@ describe('KnowledgeManager', () => {
       
       expect(result.length).toBeGreaterThan(1);
       const sources = result.map(ctx => ctx.source);
-      expect(sources).toContain('personal_profile_summary');
+      expect(sources).toContain('personal');
       expect(sources).toContain('work');
     });
 
@@ -197,27 +197,27 @@ describe('KnowledgeManager', () => {
 
     it('should properly format context sections', () => {
       const context = [
-        { source: 'personal_profile_summary', content: 'Personal info here' }
+        { source: 'personal', content: 'Personal info here' }
       ];
       
       const result = knowledgeManager.buildSystemPrompt(basePrompt, context);
       
       expect(result).toContain(basePrompt);
       expect(result).toContain('## Relevant personal context of the user you are talking to');
-      expect(result).toContain('### From PERSONAL PROFILE SUMMARY');
+      expect(result).toContain('### From PERSONAL');
       expect(result).toContain('Personal info here');
       expect(result).toContain('Use this context to provide more personalized');
     });
 
     it('should handle multiple contexts', () => {
       const contexts = [
-        { source: 'personal_profile_summary', content: 'Personal details' },
+        { source: 'personal', content: 'Personal details' },
         { source: 'work', content: 'Work details' }
       ];
       
       const result = knowledgeManager.buildSystemPrompt(basePrompt, contexts);
       
-      expect(result).toContain('### From PERSONAL PROFILE SUMMARY');
+      expect(result).toContain('### From PERSONAL');
       expect(result).toContain('Personal details');
       expect(result).toContain('### From WORK');
       expect(result).toContain('Work details');
@@ -225,12 +225,12 @@ describe('KnowledgeManager', () => {
 
     it('should properly format source names with underscores', () => {
       const context = [
-        { source: 'personal_profile_summary', content: 'Content' }
+        { source: 'personal', content: 'Content' }
       ];
       
       const result = knowledgeManager.buildSystemPrompt(basePrompt, context);
       
-      expect(result).toContain('PERSONAL PROFILE SUMMARY');
+      expect(result).toContain('PERSONAL');
       expect(result).not.toContain('personal_profile_summary');
     });
   });
