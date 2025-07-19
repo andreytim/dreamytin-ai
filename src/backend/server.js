@@ -119,16 +119,26 @@ app.post('/api/chat', async (req, res) => {
     const baseSystemPrompt = getSystemPrompt();
     
     let systemPrompt;
+    const isFirstMessage = conversation.length === 1; // Only the user message we just added
+    
     if (useFullContext) {
-      // Use full context - include all knowledge files
-      const allContext = Object.keys(knowledgeManager.knowledgeBase).map(key => ({
-        source: key,
-        content: knowledgeManager.knowledgeBase[key]
-      }));
-      systemPrompt = knowledgeManager.buildSystemPrompt(baseSystemPrompt, allContext);
+      if (isFirstMessage) {
+        // Inject full knowledge only on first message when toggle is enabled
+        const allContext = Object.keys(knowledgeManager.knowledgeBase).map(key => ({
+          source: key,
+          content: knowledgeManager.knowledgeBase[key]
+        }));
+        systemPrompt = knowledgeManager.buildSystemPrompt(baseSystemPrompt, allContext);
+        console.log('📚 Full knowledge injected on first message');
+      } else {
+        // Use base prompt only - rely on conversation memory
+        systemPrompt = baseSystemPrompt;
+        console.log('📚 Using base prompt (knowledge in conversation memory)');
+      }
     } else {
       // Use intelligent context selection
       systemPrompt = await knowledgeManager.getEnhancedSystemPromptIntelligent(baseSystemPrompt, message);
+      console.log('🧠 Using intelligent context selection');
     }
     
     const result = streamText({
