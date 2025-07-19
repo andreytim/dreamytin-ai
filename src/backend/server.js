@@ -6,10 +6,23 @@ const { google } = require('@ai-sdk/google');
 const { streamText } = require('ai');
 const { defaultModel, models } = require('../config/models.json');
 const { pricing } = require('../config/pricing.json');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
 const PORT = 3001;
+
+// Load system prompt
+function getSystemPrompt() {
+  try {
+    const promptPath = path.join(__dirname, '../../data/system-prompt.md');
+    return fs.readFileSync(promptPath, 'utf8');
+  } catch (error) {
+    console.error('Error loading system prompt:', error);
+    return 'You are a helpful AI assistant. Provide clear, accurate, and concise responses.';
+  }
+}
 
 app.use(cors());
 app.use(express.json());
@@ -59,8 +72,10 @@ app.post('/api/chat', async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     const modelProvider = getModelProvider(model);
+    const systemPrompt = getSystemPrompt();
     const result = streamText({
       model: modelProvider,
+      system: systemPrompt,
       prompt: message,
     });
 
