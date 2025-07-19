@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 function App() {
   const [messages, setMessages] = useState([])
@@ -87,7 +88,11 @@ function App() {
         {messages.map((message, index) => (
           <div key={index} className={`message ${message.role}`}>
             <div className="message-content">
-              {message.content}
+              {message.role === 'assistant' ? (
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              ) : (
+                message.content
+              )}
             </div>
           </div>
         ))}

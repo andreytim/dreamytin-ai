@@ -15,10 +15,25 @@ A desktop application serving as an ongoing life assistant with persistent knowl
 - `src/main/` - Electron main process
 - `src/renderer/` - UI frontend
 - `src/backend/` - Express API server
+- `src/config/` - Model and application configuration
 - `data/knowledge/` - Personal knowledge base
 - `data/conversations/` - Chat history
 - `data/finance/` - Financial data
 - `data/news/` - Tech news & interests
+
+## Components
+
+### Frontend (`src/renderer/`)
+- **App.jsx** - Main React chat interface with streaming messages and markdown support
+- **index.css** - Complete styling for chat UI, markdown formatting, and responsive design
+- **main.jsx** - React app entry point
+
+### Backend (`src/backend/`)
+- **server.js** - Express server with multi-provider AI support and streaming responses
+- Multi-provider routing (OpenAI, Anthropic, Google) with automatic API key validation
+
+### Configuration (`src/config/`)
+- **modelSettings.js** - Centralized model configuration with provider mappings
 
 ## Key Features (Planned)
 - Multi-provider AI model switching
