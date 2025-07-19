@@ -79,8 +79,8 @@ app.post('/api/chat', async (req, res) => {
     const modelProvider = getModelProvider(model);
     const baseSystemPrompt = getSystemPrompt();
     
-    // Get enhanced system prompt with relevant context
-    const systemPrompt = knowledgeManager.getEnhancedSystemPrompt(baseSystemPrompt, message);
+    // Get enhanced system prompt with intelligent context selection
+    const systemPrompt = await knowledgeManager.getEnhancedSystemPromptIntelligent(baseSystemPrompt, message);
     
     const result = streamText({
       model: modelProvider,
@@ -116,6 +116,34 @@ app.post('/api/chat', async (req, res) => {
       res.end();
     }
   }
+});
+
+// Knowledge system configuration endpoints
+app.get('/api/knowledge/config', (_, res) => {
+  res.json({
+    intelligentSelection: knowledgeManager.enableIntelligentSelection,
+    cacheSize: knowledgeManager.selectionCache.size,
+    availableFiles: Object.keys(knowledgeManager.knowledgeBase),
+    summariesGenerated: Object.keys(knowledgeManager.knowledgeSummaries).length > 0
+  });
+});
+
+app.post('/api/knowledge/config', (req, res) => {
+  const { intelligentSelection } = req.body;
+  if (typeof intelligentSelection === 'boolean') {
+    knowledgeManager.setIntelligentSelection(intelligentSelection);
+  }
+  res.json({ success: true });
+});
+
+app.post('/api/knowledge/cache/clear', (_, res) => {
+  knowledgeManager.clearCache();
+  res.json({ success: true, message: 'Cache cleared' });
+});
+
+app.post('/api/knowledge/reload', (_, res) => {
+  knowledgeManager.reload();
+  res.json({ success: true, message: 'Knowledge base reloaded' });
 });
 
 // Usage endpoint
