@@ -8,7 +8,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState(modelSettings.defaultModel)
   const [usage, setUsage] = useState({ totalCost: 0, requests: 0 })
-  const [useFullContext, setUseFullContext] = useState(false)
+  const [useFullContext, setUseFullContext] = useState(true)
   const [sessionId, setSessionId] = useState(() => Math.random().toString(36).substr(2, 9))
   const messagesEndRef = useRef(null)
 
