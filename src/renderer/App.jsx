@@ -87,7 +87,10 @@ function App() {
         <div className="model-selector">
           <select 
             value={selectedModel} 
-            onChange={(e) => setSelectedModel(e.target.value)}
+            onChange={(e) => {
+              setSelectedModel(e.target.value)
+              setMessages([])
+            }}
             className="model-dropdown"
           >
             {Object.keys(modelSettings.models).map((modelId) => (
