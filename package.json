@@ -2,6 +2,7 @@
   "name": "dreamytin-ai",
   "version": "1.0.0",
   "description": "Personal AI assistant with local and remote model support",
+  "author": "Andrey Tim",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
