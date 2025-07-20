@@ -1,0 +1,14 @@
+{
+  "defaultModel": "claude-3.5-haiku",
+  "models": {
+    "gpt-4.1": { "provider": "openai", "name": "gpt-4.1", "maxTokens": 1000000 },
+    "gpt-4.1-mini": { "provider": "openai", "name": "gpt-4.1-mini", "maxTokens": 1000000 },
+    "gpt-4.1-nano": { "provider": "openai", "name": "gpt-4.1-nano", "maxTokens": 1000000 },
+    "claude-opus-4": { "provider": "anthropic", "name": "claude-opus-4-20250514", "maxTokens": 200000 },
+    "claude-sonnet-4": { "provider": "anthropic", "name": "claude-sonnet-4-20250514", "maxTokens": 200000 },
+    "claude-3.5-haiku": { "provider": "anthropic", "name": "claude-3-5-haiku-20241022", "maxTokens": 200000 },
+    "gemini-2.0-flash": { "provider": "google", "name": "gemini-2.0-flash-exp", "maxTokens": 1000000 },
+    "gemini-1.5-pro": { "provider": "google", "name": "gemini-1.5-pro", "maxTokens": 2000000 },
+    "gemini-1.5-flash": { "provider": "google", "name": "gemini-1.5-flash", "maxTokens": 1000000 }
+  }
+}
