@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
-import modelSettings from '../config/models.json'
+import modelSettings from './src/config/models.json'
 
 function App() {
   const [messages, setMessages] = useState([])
