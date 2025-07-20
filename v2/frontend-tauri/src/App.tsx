@@ -135,6 +135,7 @@ function App() {
       <div className="chat-container">
         <div className="chat-header">
           <div className="header-title">
+            <img src="/icon.png" alt="DreamyTin AI" className="app-icon" />
             <h1>Dreamy Tin v2</h1>
           </div>
           <div className="header-controls">
