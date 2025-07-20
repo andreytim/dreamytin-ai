@@ -1,6 +1,6 @@
 # DreamyTin AI
 
-Personal AI assistant with multi-provider support, intelligent knowledge management, and conversation memory.
+Personal AI assistant web application with multi-provider support, intelligent knowledge management, and conversation memory.
 
 ## Features
 
@@ -8,14 +8,16 @@ Personal AI assistant with multi-provider support, intelligent knowledge managem
 - **Conversation Memory** - Persistent chat history with intelligent context management  
 - **Smart Knowledge Base** - AI-powered personal context injection
 - **Real-time Cost Tracking** - Session-based usage monitoring
-- **Standalone Desktop App** - No external server required
+- **Web-Based Interface** - Runs in your browser with local backend
 
 ## Quick Start
 
 ```bash
 npm install
-npm run dev      # Start with hot reload
+npm run dev      # Start frontend and backend servers
 ```
+
+Then open http://localhost:5173 in your browser.
 
 **Setup API Keys** (`.env` file):
 ```env
@@ -28,10 +30,14 @@ GOOGLE_GENERATIVE_AI_API_KEY=your_key
 
 ```
 src/
-├── main/           # Electron main process
-├── renderer/       # React UI
-├── backend/        # Express server (embedded)
+├── backend/        # Express API server (port 3001)
 └── config/         # Model configuration
+
+# Root level
+├── App.jsx         # Main React component
+├── main.jsx        # React entry point
+├── index.html      # HTML template
+└── index.css       # Styles
 
 data/
 ├── system-prompt.md    # AI behavior config
@@ -89,24 +95,17 @@ The app now maintains conversation context within each session:
 - **Conversation Efficient** - Knowledge injected once per conversation
 - **No Dependencies** - No external AI calls for knowledge management
 
-## Building
+## Development
 
-**Development:**
 ```bash
-npm run dev          # Start with hot reload
+npm run dev          # Start both frontend and backend
+npm run dev:frontend # Start only frontend (Vite)
+npm run dev:backend  # Start only backend (Express)
 npm test             # Run test suite
 npm run test:watch   # Watch mode testing
 ```
 
-**Production Builds:**
-```bash
-npm run build:mac    # macOS (.dmg, .zip)
-npm run build:win    # Windows (.exe) 
-npm run build:linux  # Linux (.AppImage)
-npm run build        # Current platform
-```
-
-Built apps are fully standalone with embedded backend.
+**Note:** This is a development-only application with no production build.
 
 ## System Prompt
 
@@ -123,8 +122,8 @@ See [TESTING.md](./TESTING.md) for detailed testing information.
 
 ## Tech Stack
 
-- **Frontend**: Electron + React + Vite
-- **Backend**: Express.js (embedded in Electron)
+- **Frontend**: React + Vite (http://localhost:5173)
+- **Backend**: Express.js API (http://localhost:3001)
 - **AI**: AI SDK (multi-provider support)
 - **Storage**: Local files (JSON/Markdown)
-- **Build**: Electron Builder for distribution
+- **Development**: Hot reload with Vite + nodemon
