@@ -1,5 +1,5 @@
 #!/bin/bash
 
-# Activate virtual environment and run the server
+# Activate virtual environment and run the server with hot reload
 source venv/bin/activate
-python main.py
+uvicorn main:app --reload --host 0.0.0.0 --port 8000

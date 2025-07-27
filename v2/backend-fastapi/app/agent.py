@@ -202,12 +202,15 @@ class DreamyTinAgent:
             if stream:
                 complete_content = ""
                 tool_calls = []
+                last_content_sent = ""
                 
                 async for chunk in response:
                     # Handle content
                     if chunk.choices and chunk.choices[0].delta.content:
                         content = chunk.choices[0].delta.content
                         complete_content += content
+                        
+                        # Stream the delta content as received
                         yield {
                             "type": "stream",
                             "content": content,
@@ -240,7 +243,7 @@ class DreamyTinAgent:
                     # Add assistant message with tool calls
                     self.sessions[session_id].append({"role": "user", "content": message})
                     self.sessions[session_id].append({
-                        "role": "assistant",
+                        "role": "assistant", 
                         "content": complete_content or None,
                         "tool_calls": tool_calls
                     })
@@ -285,30 +288,118 @@ class DreamyTinAgent:
                     messages_with_tools = [{"role": "system", "content": self.agent_config.instructions}]
                     messages_with_tools.extend(self.sessions[session_id])
                     
-                    final_response = await acompletion(
-                        model=litellm_model,
-                        messages=messages_with_tools,
-                        stream=True,
-                        temperature=0.7,
-                        max_tokens=4096
-                    )
+                    # Build final completion kwargs with tools if model supports them
+                    final_completion_kwargs = {
+                        "model": litellm_model,
+                        "messages": messages_with_tools,
+                        "stream": True,
+                        "temperature": 0.7,
+                        "max_tokens": 4096
+                    }
                     
-                    final_content = ""
-                    async for chunk in final_response:
-                        if chunk.choices and chunk.choices[0].delta.content:
-                            content = chunk.choices[0].delta.content
-                            final_content += content
+                    # Add tools if supported (Anthropic requires tools param even for follow-up calls)
+                    if supports_tools and self.agent_config.tools:
+                        final_completion_kwargs["tools"] = self.agent_config.tools
+                        final_completion_kwargs["tool_choice"] = "auto"
+                    
+                    # Signal that we're starting the final response
+                    yield {
+                        "type": "final_response_start",
+                        "model": model_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                    
+                    # Continue processing until no more tool calls are needed
+                    while True:
+                        final_response = await acompletion(**final_completion_kwargs)
+                        
+                        final_content = ""
+                        final_tool_calls = []
+                        
+                        async for chunk in final_response:
+                            # Handle content
+                            if chunk.choices and chunk.choices[0].delta.content:
+                                content = chunk.choices[0].delta.content
+                                final_content += content
+                                yield {
+                                    "type": "final_stream",
+                                    "content": content,
+                                    "model": model_id,
+                                    "timestamp": datetime.utcnow().isoformat()
+                                }
+                            
+                            # Handle additional tool calls
+                            if chunk.choices and chunk.choices[0].delta.tool_calls:
+                                for tool_call_delta in chunk.choices[0].delta.tool_calls:
+                                    # Accumulate tool call information
+                                    if len(final_tool_calls) <= tool_call_delta.index:
+                                        final_tool_calls.append({
+                                            "id": "",
+                                            "type": "function",
+                                            "function": {"name": "", "arguments": ""}
+                                        })
+                                    
+                                    tc = final_tool_calls[tool_call_delta.index]
+                                    if tool_call_delta.id:
+                                        tc["id"] = tool_call_delta.id
+                                    if tool_call_delta.function:
+                                        if tool_call_delta.function.name:
+                                            tc["function"]["name"] = tool_call_delta.function.name
+                                        if tool_call_delta.function.arguments:
+                                            tc["function"]["arguments"] += tool_call_delta.function.arguments
+                        
+                        # Add current response to session
+                        self.sessions[session_id].append({
+                            "role": "assistant",
+                            "content": final_content or None,
+                            "tool_calls": final_tool_calls if final_tool_calls else None
+                        })
+                        
+                        # If no more tool calls, we're done
+                        if not final_tool_calls:
+                            break
+                            
+                        # Execute additional tool calls
+                        for tool_call in final_tool_calls:
+                            tool_name = tool_call["function"]["name"]
+                            try:
+                                arguments = json.loads(tool_call["function"]["arguments"])
+                            except json.JSONDecodeError:
+                                arguments = {}
+                            
+                            # Stream tool execution notification
                             yield {
-                                "type": "stream",
-                                "content": content,
+                                "type": "tool_call",
+                                "tool_name": tool_name,
+                                "arguments": arguments,
                                 "model": model_id,
                                 "timestamp": datetime.utcnow().isoformat()
                             }
-                    
-                    # Add final response to session
-                    self.sessions[session_id].append({"role": "assistant", "content": final_content})
+                            
+                            # Execute tool
+                            tool_result = await self._execute_tool(tool_name, arguments)
+                            
+                            # Add tool result to session
+                            self.sessions[session_id].append({
+                                "role": "tool",
+                                "content": tool_result,
+                                "tool_call_id": tool_call["id"]
+                            })
+                            
+                            # Stream tool result
+                            yield {
+                                "type": "tool_result",
+                                "tool_name": tool_name,
+                                "result": tool_result,
+                                "model": model_id,
+                                "timestamp": datetime.utcnow().isoformat()
+                            }
+                        
+                        # Update messages for next iteration
+                        messages_with_tools = [{"role": "system", "content": self.agent_config.instructions}]
+                        messages_with_tools.extend(self.sessions[session_id])
                 else:
-                    # No tool calls, just add the response
+                    # No tool calls, just add the response (content was already streamed)
                     self.sessions[session_id].append({"role": "user", "content": message})
                     self.sessions[session_id].append({"role": "assistant", "content": complete_content})
                 

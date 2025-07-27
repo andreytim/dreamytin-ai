@@ -1,6 +1,6 @@
 # DreamyTin AI v2 Backend - FastAPI
 
-Phase 1 implementation of the FastAPI backend with OpenAI Agents SDK integration.
+Complete backend implementation with frontend integration (Phases 1-3 completed).
 
 ## Setup
 
@@ -39,18 +39,67 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - `GET /models` - Available models
 - `WebSocket /ws/{client_id}` - Chat streaming
 
-## Features Implemented (Phase 1)
+## Features Implemented
 
-✅ FastAPI server with CORS  
-✅ Health check endpoint  
-✅ WebSocket streaming endpoint  
-✅ OpenAI Agents SDK integration  
-✅ LiteLLM multi-provider support  
-✅ Session management  
-✅ Proper error handling  
+### ✅ Phase 1: Core Backend
+- FastAPI server with CORS
+- Health check endpoint  
+- WebSocket streaming endpoint
+- OpenAI Agents SDK integration
+- LiteLLM multi-provider support (OpenAI, Anthropic, Google)
+- Session management
+- Proper error handling
 
-## Next Steps (Phase 2)
+### ✅ Phase 2: Tool System
+- Custom tool framework with base classes
+- Tool registry system for dynamic tool discovery
+- Implemented tools:
+  - `ls` - List directory contents with filtering
+  - `read_file` - Read file contents with encoding support
+- Tool integration with OpenAI function calling
+- Error handling and validation for tool execution
 
-- Tool framework implementation
-- `ls` and `read_file` tools
-- Tool execution handling
+### ✅ Phase 3: Frontend Integration
+- WebSocket message protocol for streaming
+- Tool call and result streaming to frontend
+- Recursive tool calling support (agent can use tools multiple times)
+- Model selection endpoint with dynamic configuration
+- Connection status management
+- Error propagation to frontend
+
+## Architecture
+
+```
+app/
+├── main.py              # FastAPI app setup and WebSocket handling
+├── agent.py             # OpenAI Agents SDK integration and LiteLLM
+├── tools/
+│   ├── __init__.py      # Tool registry and base classes
+│   ├── ls.py            # Directory listing tool
+│   └── read_file.py     # File reading tool
+└── config.py            # Configuration management
+```
+
+## Adding New Tools
+
+1. Create tool in `app/tools/your_tool.py`:
+```python
+from app.tools import BaseTool, ToolResult
+
+class YourTool(BaseTool):
+    name = "your_tool"
+    description = "Tool description"
+    
+    async def execute(self, **kwargs) -> ToolResult:
+        # Implementation
+        return ToolResult(content="result", path=kwargs.get("path"))
+```
+
+2. Tool auto-registers via `__init__.py` import
+
+## Next Steps (Phase 4+)
+
+- Conversation history persistence
+- Knowledge base integration  
+- Usage tracking and cost calculation
+- Advanced agent features
