@@ -27,3 +27,12 @@ export interface ModelInfo {
   models: Record<string, any>
   providers: Record<string, boolean>
 }
+
+export interface Conversation {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  message_count: number
+  model: string
+}

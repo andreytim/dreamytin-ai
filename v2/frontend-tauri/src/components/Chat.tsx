@@ -72,11 +72,15 @@ const Chat: FC<ChatProps> = ({
         </div>
         <div className="header-controls">
           <div className="usage-display">
-            <span className="usage-cost">${usage.totalCost.toFixed(4)}</span>
-            <span className="usage-requests">({usage.requests} requests)</span>
-            <span className="context-size">
-              <span className="tokens-in">{formatTokens(contextSize.inputTokens || 0)} in</span> / <span className="tokens-out">{formatTokens(contextSize.outputTokens || 0)} out</span> tk
-            </span>
+            <div className="usage-row cost-row">
+              <span className="usage-cost">${usage.totalCost.toFixed(4)}</span>
+              <span className="usage-requests">({usage.requests} requests)</span>
+            </div>
+            <div className="usage-row tokens-row">
+              <span className="context-size">
+                <span className="tokens-in">{formatTokens(contextSize.inputTokens || 0)} in</span> <span className="tokens-out">{formatTokens(contextSize.outputTokens || 0)} out</span> tk
+              </span>
+            </div>
           </div>
           <div className="model-selector">
             <select 

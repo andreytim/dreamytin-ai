@@ -4,9 +4,10 @@ DreamyTin AI v2 Backend - FastAPI Server
 import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import asyncio
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 import json
 from datetime import datetime
 from dotenv import load_dotenv
@@ -79,6 +80,53 @@ async def health_check():
 async def get_models():
     """Get available models"""
     return agent.get_available_models()
+
+# Conversation management endpoints
+@app.get("/conversations")
+async def list_conversations():
+    """Get list of all conversations"""
+    try:
+        conversations = await agent.conversation_manager.list_conversations()
+        return {"conversations": conversations}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/conversations")
+async def create_conversation(request: dict):
+    """Create a new conversation"""
+    try:
+        session_id = request.get("session_id")
+        model = request.get("model", "claude-3.5-haiku")
+        
+        if not session_id:
+            raise HTTPException(status_code=400, detail="session_id is required")
+        
+        conversation = await agent.conversation_manager.create_conversation(session_id, model)
+        return conversation
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/conversations/{session_id}")
+async def get_conversation(session_id: str):
+    """Get conversation details and messages"""
+    try:
+        conversation = await agent.conversation_manager.get_conversation(session_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return conversation
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/conversations/{session_id}")
+async def delete_conversation(session_id: str):
+    """Delete a conversation"""
+    try:
+        success = await agent.conversation_manager.delete_conversation(session_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return {"message": "Conversation deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):

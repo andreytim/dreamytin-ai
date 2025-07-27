@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import modelSettings from '../../shared/config/models.json'
 import Chat from './components/Chat'
 import Canvas from './components/Canvas'
+import ConversationSidebar from './components/ConversationSidebar'
 import type { Message, Usage, ContextSize, ConnectionState, ModelInfo } from './types'
 import './App.css'
 
@@ -11,7 +12,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState(modelSettings.defaultModel)
   const [usage, setUsage] = useState<Usage>({ totalCost: 0, requests: 0 })
-  const [sessionId] = useState(() => Math.random().toString(36).substring(2, 11))
+  const [sessionId, setSessionId] = useState(() => Math.random().toString(36).substring(2, 11))
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [contextSize, setContextSize] = useState<ContextSize>({ tokenCount: 0, messageCount: 0 })
   const [connection, setConnection] = useState<ConnectionState>({ status: 'disconnected' })
   const [websocket, setWebsocket] = useState<WebSocket | null>(null)
@@ -193,6 +195,58 @@ function App() {
     setUsage({ totalCost: 0, requests: 0 })
   }
 
+  // Conversation management functions
+  const createNewConversation = () => {
+    const newSessionId = Math.random().toString(36).substring(2, 11)
+    setSessionId(newSessionId)
+    setMessages([])
+    setInput('')
+    setCanvasContent('')
+    setActiveTab('')
+    setContextSize({ tokenCount: 0, messageCount: 0 })
+    
+    // Close existing WebSocket and create new one
+    if (websocket) {
+      websocket.close()
+      setWebsocket(null)
+    }
+    
+    // Connect with new session ID
+    setTimeout(() => connectWebSocket(), 100)
+  }
+
+  const selectConversation = async (conversationId: string) => {
+    try {
+      // Fetch conversation messages
+      const response = await fetch(`http://localhost:8000/conversations/${conversationId}`)
+      if (response.ok) {
+        const conversation = await response.json()
+        
+        // Update state with conversation data
+        setSessionId(conversationId)
+        setMessages(conversation.messages || [])
+        setInput('')
+        setCanvasContent('')
+        setActiveTab('')
+        setContextSize({ 
+          tokenCount: 0, 
+          messageCount: conversation.messages?.length || 0 
+        })
+        
+        // Close existing WebSocket and create new one
+        if (websocket) {
+          websocket.close()
+          setWebsocket(null)
+        }
+        
+        // Connect with selected conversation ID
+        setTimeout(() => connectWebSocket(), 100)
+      }
+    } catch (error) {
+      console.error('Error loading conversation:', error)
+    }
+  }
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !websocket || connection.status !== 'connected') return
 
@@ -242,31 +296,40 @@ function App() {
   }
 
   return (
-    <div className="app-layout">
-      <Chat
-        messages={messages}
-        input={input}
-        setInput={setInput}
-        isLoading={isLoading}
-        selectedModel={selectedModel}
-        setSelectedModel={setSelectedModel}
-        usage={usage}
-        contextSize={contextSize}
-        connection={connection}
-        availableModels={availableModels}
-        resetUsage={resetUsage}
-        sendMessage={sendMessage}
-        onToolResultClick={handleToolResultClick}
-        setMessages={setMessages}
-        setContextSize={setContextSize}
+    <div className="app-container">
+      <ConversationSidebar
+        currentConversationId={sessionId}
+        onSelectConversation={selectConversation}
+        onNewConversation={createNewConversation}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      
-      <Canvas
-        canvasContent={canvasContent}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onClear={clearCanvas}
-      />
+      <div className="main-content">
+        <Chat
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          isLoading={isLoading}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          usage={usage}
+          contextSize={contextSize}
+          connection={connection}
+          availableModels={availableModels}
+          resetUsage={resetUsage}
+          sendMessage={sendMessage}
+          onToolResultClick={handleToolResultClick}
+          setMessages={setMessages}
+          setContextSize={setContextSize}
+        />
+        
+        <Canvas
+          canvasContent={canvasContent}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onClear={clearCanvas}
+        />
+      </div>
     </div>
   )
 }

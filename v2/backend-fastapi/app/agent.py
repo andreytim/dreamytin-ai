@@ -21,6 +21,9 @@ import sys
 sys.path.append('..')
 from tools import tool_registry, ToolResult
 
+# Conversation management
+from .conversation_manager import ConversationManager
+
 # Configure LiteLLM
 litellm.set_verbose = False
 
@@ -65,8 +68,11 @@ class DreamyTinAgent:
             tools=self._get_tool_definitions()
         )
         
-        # Conversation sessions
+        # Conversation sessions (deprecated - now using ConversationManager)
         self.sessions: Dict[str, List[ChatCompletionMessage]] = {}
+        
+        # File-based conversation manager
+        self.conversation_manager = ConversationManager()
     
     def _load_system_prompt(self) -> str:
         """Load system prompt from file"""
@@ -149,9 +155,17 @@ class DreamyTinAgent:
             # Format error
             return f"Tool execution failed: {result.error}"
     
-    async def create_session(self, session_id: str) -> None:
+    async def create_session(self, session_id: str, model: str = None) -> None:
         """Create a new conversation session"""
+        # Keep backward compatibility with in-memory sessions
         self.sessions[session_id] = []
+        
+        # Check if conversation already exists
+        existing_conversation = await self.conversation_manager.get_conversation(session_id)
+        if not existing_conversation:
+            # Create new persistent conversation only if it doesn't exist
+            conversation_model = model or self.agent_config.model
+            await self.conversation_manager.create_conversation(session_id, conversation_model)
     
     async def process_message(
         self,
@@ -169,16 +183,29 @@ class DreamyTinAgent:
         
         # Create session if it doesn't exist
         if session_id not in self.sessions:
-            await self.create_session(session_id)
+            await self.create_session(session_id, model_id)
         
         # Convert to LiteLLM model name for multi-provider support
         litellm_model = self._get_litellm_model_name(model_id)
         
         try:
-            # Build messages for agent
-            messages = [{"role": "system", "content": self.agent_config.instructions}]
-            messages.extend(self.sessions[session_id])
-            messages.append({"role": "user", "content": message})
+            # Load conversation history and apply context window truncation
+            conversation_messages = await self.conversation_manager.get_conversation_messages(session_id)
+            
+            # Apply context window handling
+            model_config = self.model_config.get("models", {}).get(model_id, {})
+            max_tokens = model_config.get("contextWindow", 32000)
+            
+            # Truncate if needed (keeping system prompt + recent messages)
+            all_messages = [{"role": "system", "content": self.agent_config.instructions}]
+            all_messages.extend(conversation_messages)
+            all_messages.append({"role": "user", "content": message})
+            
+            messages = self.conversation_manager.truncate_for_context_window(all_messages, max_tokens)
+            
+            # Ensure we have system message
+            if not messages or messages[0].get("role") != "system":
+                messages.insert(0, {"role": "system", "content": self.agent_config.instructions})
             
             # Check if model supports function calling
             supports_tools = model_id.startswith("gpt") or model_id.startswith("claude")
@@ -240,8 +267,14 @@ class DreamyTinAgent:
                 
                 # Process any tool calls
                 if tool_calls:
-                    # Add assistant message with tool calls
+                    # Save user message
+                    await self.conversation_manager.add_message(session_id, "user", message)
                     self.sessions[session_id].append({"role": "user", "content": message})
+                    
+                    # Save assistant message with tool calls
+                    await self.conversation_manager.add_message(
+                        session_id, "assistant", complete_content or None, tool_calls=tool_calls
+                    )
                     self.sessions[session_id].append({
                         "role": "assistant", 
                         "content": complete_content or None,
@@ -268,7 +301,10 @@ class DreamyTinAgent:
                         # Execute tool
                         tool_result = await self._execute_tool(tool_name, arguments)
                         
-                        # Add tool result to session
+                        # Save tool result
+                        await self.conversation_manager.add_message(
+                            session_id, "tool", tool_result, tool_call_id=tool_call["id"]
+                        )
                         self.sessions[session_id].append({
                             "role": "tool",
                             "content": tool_result,
@@ -309,8 +345,11 @@ class DreamyTinAgent:
                         "timestamp": datetime.utcnow().isoformat()
                     }
                     
-                    # Continue processing until no more tool calls are needed
-                    while True:
+                    # Continue processing until no more tool calls are needed (with safety limit)
+                    max_iterations = 10  # Prevent infinite loops
+                    iteration_count = 0
+                    
+                    while iteration_count < max_iterations:
                         final_response = await acompletion(**final_completion_kwargs)
                         
                         final_content = ""
@@ -348,12 +387,19 @@ class DreamyTinAgent:
                                         if tool_call_delta.function.arguments:
                                             tc["function"]["arguments"] += tool_call_delta.function.arguments
                         
-                        # Add current response to session
+                        # Save current response
+                        await self.conversation_manager.add_message(
+                            session_id, "assistant", final_content or None, 
+                            tool_calls=final_tool_calls if final_tool_calls else None
+                        )
                         self.sessions[session_id].append({
                             "role": "assistant",
                             "content": final_content or None,
                             "tool_calls": final_tool_calls if final_tool_calls else None
                         })
+                        
+                        # Increment iteration counter
+                        iteration_count += 1
                         
                         # If no more tool calls, we're done
                         if not final_tool_calls:
@@ -379,7 +425,10 @@ class DreamyTinAgent:
                             # Execute tool
                             tool_result = await self._execute_tool(tool_name, arguments)
                             
-                            # Add tool result to session
+                            # Save tool result
+                            await self.conversation_manager.add_message(
+                                session_id, "tool", tool_result, tool_call_id=tool_call["id"]
+                            )
                             self.sessions[session_id].append({
                                 "role": "tool",
                                 "content": tool_result,
@@ -398,8 +447,19 @@ class DreamyTinAgent:
                         # Update messages for next iteration
                         messages_with_tools = [{"role": "system", "content": self.agent_config.instructions}]
                         messages_with_tools.extend(self.sessions[session_id])
+                    
+                    # Check if we hit the iteration limit
+                    if iteration_count >= max_iterations:
+                        yield {
+                            "type": "error",
+                            "error": f"Maximum tool execution iterations ({max_iterations}) reached. Stopping to prevent infinite loop.",
+                            "model": model_id,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
                 else:
-                    # No tool calls, just add the response (content was already streamed)
+                    # No tool calls, save user and assistant messages
+                    await self.conversation_manager.add_message(session_id, "user", message)
+                    await self.conversation_manager.add_message(session_id, "assistant", complete_content)
                     self.sessions[session_id].append({"role": "user", "content": message})
                     self.sessions[session_id].append({"role": "assistant", "content": complete_content})
                 
@@ -410,6 +470,8 @@ class DreamyTinAgent:
                 }
             else:
                 content = response.choices[0].message.content
+                await self.conversation_manager.add_message(session_id, "user", message)
+                await self.conversation_manager.add_message(session_id, "assistant", content)
                 self.sessions[session_id].append({"role": "user", "content": message})
                 self.sessions[session_id].append({"role": "assistant", "content": content})
                 
