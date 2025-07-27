@@ -11,12 +11,12 @@ npm install
 npm run tauri dev    # Development mode
 npm run tauri build  # Production build
 
-# Backend (FastAPI) - Coming Soon
+# Backend (FastAPI)
 cd v2/backend-fastapi
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+python main.py  # or: uvicorn main:app --reload
 ```
 
 ## Architecture
@@ -35,7 +35,7 @@ uvicorn main:app --reload
 - Tailwind CSS for styling
 - WebSocket for streaming responses
 
-### Backend (🚧 In Progress)
+### Backend (✅ Phase 1 Complete)
 - FastAPI - Modern async Python web framework
 - OpenAI Agents SDK - Production-ready agent framework
 - LiteLLM - Unified interface for multiple AI providers
@@ -52,15 +52,19 @@ uvicorn main:app --reload
 - [x] App icon and window management
 - [x] Shared configuration structure
 
-### 🚧 In Progress (Phase 1)
-- [ ] FastAPI server setup with health checks
-- [ ] OpenAI Agents SDK integration
-- [ ] LiteLLM adapter for multi-provider support
-- [ ] WebSocket streaming implementation
+### ✅ Completed (Phase 1)
+- [x] FastAPI server setup with health checks
+- [x] OpenAI Agents SDK integration
+- [x] LiteLLM adapter for multi-provider support
+- [x] WebSocket streaming implementation
+- [x] Session management and error handling
 
-### 📋 Planned
+### 🚧 Next (Phase 2)
 - [ ] Tool implementation (ls, file_read)
-- [ ] Conversation history management
+- [ ] Tool registration and execution system
+
+### 📋 Planned (Phase 3+)
+- [ ] Conversation history management  
 - [ ] Knowledge base integration
 - [ ] Session persistence (SQLite)
 - [ ] Usage tracking and cost calculation

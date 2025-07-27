@@ -17,7 +17,7 @@
    - To: `v2/frontend-tauri/src/`
    - Status: Complete with TypeScript
 
-2. **AI Provider Integration**
+2. **AI Provider Integration** ✅
    - From: `src/backend/server.js` (OpenAI/Anthropic routes)
    - To: `v2/backend-fastapi/` using OpenAI Agents SDK + LiteLLM
    - Support: OpenAI, Anthropic, Google Gemini
@@ -54,25 +54,25 @@
 | v1 Location | v2 Location | Notes |
 |------------|-------------|-------|
 | `App.jsx` | `v2/frontend-tauri/src/App.tsx` | ✅ Completed |
-| `src/backend/server.js` | `v2/backend-fastapi/main.py` | Rewrite with FastAPI |
+| `src/backend/server.js` | `v2/backend-fastapi/main.py` | ✅ Completed |
 | `src/backend/knowledgeManager.js` | `v2/backend-fastapi/knowledge/manager.py` | As agent tools |
 | `src/config/*.json` | `v2/shared/config/` | ✅ Completed |
 | `data/` | Keep in place | Shared between versions |
 
 ## Phased Implementation Plan
 
-### Phase 1: Basic FastAPI + Agent Setup
-1. **FastAPI server setup**
+### Phase 1: Basic FastAPI + Agent Setup ✅ COMPLETED
+1. **FastAPI server setup** ✅
    - Basic app structure with CORS
    - Health check endpoint
    - WebSocket endpoint for streaming
 
-2. **OpenAI Agents SDK integration**
+2. **OpenAI Agents SDK integration** ✅
    - Basic agent with system prompt
    - LiteLLM adapter for multi-provider support
    - Simple message handling (no tools yet)
 
-3. **Streaming implementation**
+3. **Streaming implementation** ✅
    - WebSocket streaming for responses
    - Proper error handling
    - Connection management
@@ -133,16 +133,15 @@ python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
-pip install fastapi uvicorn websockets
-pip install openai-agents-sdk litellm
-pip install python-dotenv aiofiles
-pip install anthropic google-generativeai  # For direct provider support
+pip install -r requirements.txt
+
+# Run server  
+python main.py  # or: uvicorn main:app --reload
 ```
 
 ### Environment Configuration
 ```bash
-# Copy from v1
-cp ../.env .env
+# Backend automatically uses root .env file (../../.env)
 # Ensure it has: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY
 ```
 
