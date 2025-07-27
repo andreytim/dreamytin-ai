@@ -52,18 +52,23 @@ python main.py  # or: uvicorn main:app --reload
 - [x] App icon and window management
 - [x] Shared configuration structure
 
-### ✅ Completed (Phase 1)
+### ✅ Completed (Phase 1 & 2)
 - [x] FastAPI server setup with health checks
 - [x] OpenAI Agents SDK integration
 - [x] LiteLLM adapter for multi-provider support
 - [x] WebSocket streaming implementation
 - [x] Session management and error handling
+- [x] Tool framework with base classes and registry
+- [x] ls and read_file tools implementation
+- [x] Tool integration with agent (function calling)
 
-### 🚧 Next (Phase 2)
-- [ ] Tool implementation (ls, file_read)
-- [ ] Tool registration and execution system
+### 🚧 Next (Phase 3)
+- [ ] Frontend WebSocket connection to FastAPI backend
+- [ ] Handle streaming responses and tool calls in UI
+- [ ] Model selection integration with `/models` endpoint
+- [ ] Connection status and error handling
 
-### 📋 Planned (Phase 3+)
+### 📋 Planned (Phase 4+)
 - [ ] Conversation history management  
 - [ ] Knowledge base integration
 - [ ] Session persistence (SQLite)

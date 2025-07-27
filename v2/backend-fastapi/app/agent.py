@@ -16,6 +16,11 @@ from openai.types.chat import ChatCompletionMessage
 from litellm import acompletion
 import litellm
 
+# Tool system imports
+import sys
+sys.path.append('..')
+from tools import tool_registry, ToolResult
+
 # Configure LiteLLM
 litellm.set_verbose = False
 
@@ -57,7 +62,7 @@ class DreamyTinAgent:
             name="DreamyTin AI",
             instructions=self.system_prompt,
             model=self.model_config.get("defaultModel", "claude-3.5-haiku"),
-            tools=[]  # Will be populated with tools in Phase 2
+            tools=self._get_tool_definitions()
         )
         
         # Conversation sessions
@@ -97,6 +102,53 @@ class DreamyTinAgent:
             # OpenAI and Anthropic models use their names directly
             return model_name
     
+    def _get_tool_definitions(self) -> List[Dict[str, Any]]:
+        """Get tool definitions in OpenAI function calling format"""
+        tools = []
+        for tool_def in tool_registry.get_definitions():
+            # Convert to OpenAI function format
+            function_def = {
+                "type": "function",
+                "function": {
+                    "name": tool_def.name,
+                    "description": tool_def.description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    }
+                }
+            }
+            
+            # Add parameters
+            for param in tool_def.parameters:
+                function_def["function"]["parameters"]["properties"][param.name] = {
+                    "type": param.type,
+                    "description": param.description
+                }
+                if param.required:
+                    function_def["function"]["parameters"]["required"].append(param.name)
+                if param.default is not None:
+                    function_def["function"]["parameters"]["properties"][param.name]["default"] = param.default
+            
+            tools.append(function_def)
+        
+        return tools
+    
+    async def _execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+        """Execute a tool and return formatted result"""
+        result = await tool_registry.execute(tool_name, **arguments)
+        
+        if result.success:
+            # Format successful result
+            if isinstance(result.data, dict):
+                return json.dumps(result.data, indent=2)
+            else:
+                return str(result.data)
+        else:
+            # Format error
+            return f"Tool execution failed: {result.error}"
+    
     async def create_session(self, session_id: str) -> None:
         """Create a new conversation session"""
         self.sessions[session_id] = []
@@ -128,18 +180,31 @@ class DreamyTinAgent:
             messages.extend(self.sessions[session_id])
             messages.append({"role": "user", "content": message})
             
+            # Check if model supports function calling
+            supports_tools = model_id.startswith("gpt") or model_id.startswith("claude")
+            
             # Use LiteLLM through OpenAI client interface for multi-provider support
-            response = await acompletion(
-                model=litellm_model,
-                messages=messages,
-                stream=stream,
-                temperature=0.7,
-                max_tokens=4096
-            )
+            completion_kwargs = {
+                "model": litellm_model,
+                "messages": messages,
+                "stream": stream,
+                "temperature": 0.7,
+                "max_tokens": 4096
+            }
+            
+            # Add tools if supported
+            if supports_tools and self.agent_config.tools:
+                completion_kwargs["tools"] = self.agent_config.tools
+                completion_kwargs["tool_choice"] = "auto"
+            
+            response = await acompletion(**completion_kwargs)
             
             if stream:
                 complete_content = ""
+                tool_calls = []
+                
                 async for chunk in response:
+                    # Handle content
                     if chunk.choices and chunk.choices[0].delta.content:
                         content = chunk.choices[0].delta.content
                         complete_content += content
@@ -149,10 +214,103 @@ class DreamyTinAgent:
                             "model": model_id,
                             "timestamp": datetime.utcnow().isoformat()
                         }
+                    
+                    # Handle tool calls
+                    if chunk.choices and chunk.choices[0].delta.tool_calls:
+                        for tool_call_delta in chunk.choices[0].delta.tool_calls:
+                            # Accumulate tool call information
+                            if len(tool_calls) <= tool_call_delta.index:
+                                tool_calls.append({
+                                    "id": "",
+                                    "type": "function",
+                                    "function": {"name": "", "arguments": ""}
+                                })
+                            
+                            tc = tool_calls[tool_call_delta.index]
+                            if tool_call_delta.id:
+                                tc["id"] = tool_call_delta.id
+                            if tool_call_delta.function:
+                                if tool_call_delta.function.name:
+                                    tc["function"]["name"] = tool_call_delta.function.name
+                                if tool_call_delta.function.arguments:
+                                    tc["function"]["arguments"] += tool_call_delta.function.arguments
                 
-                # Add to session history
-                self.sessions[session_id].append({"role": "user", "content": message})
-                self.sessions[session_id].append({"role": "assistant", "content": complete_content})
+                # Process any tool calls
+                if tool_calls:
+                    # Add assistant message with tool calls
+                    self.sessions[session_id].append({"role": "user", "content": message})
+                    self.sessions[session_id].append({
+                        "role": "assistant",
+                        "content": complete_content or None,
+                        "tool_calls": tool_calls
+                    })
+                    
+                    # Execute tools and stream results
+                    for tool_call in tool_calls:
+                        tool_name = tool_call["function"]["name"]
+                        try:
+                            arguments = json.loads(tool_call["function"]["arguments"])
+                        except json.JSONDecodeError:
+                            arguments = {}
+                        
+                        # Stream tool execution notification
+                        yield {
+                            "type": "tool_call",
+                            "tool_name": tool_name,
+                            "arguments": arguments,
+                            "model": model_id,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                        
+                        # Execute tool
+                        tool_result = await self._execute_tool(tool_name, arguments)
+                        
+                        # Add tool result to session
+                        self.sessions[session_id].append({
+                            "role": "tool",
+                            "content": tool_result,
+                            "tool_call_id": tool_call["id"]
+                        })
+                        
+                        # Stream tool result
+                        yield {
+                            "type": "tool_result",
+                            "tool_name": tool_name,
+                            "result": tool_result,
+                            "model": model_id,
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                    
+                    # Get final response after tool execution
+                    messages_with_tools = [{"role": "system", "content": self.agent_config.instructions}]
+                    messages_with_tools.extend(self.sessions[session_id])
+                    
+                    final_response = await acompletion(
+                        model=litellm_model,
+                        messages=messages_with_tools,
+                        stream=True,
+                        temperature=0.7,
+                        max_tokens=4096
+                    )
+                    
+                    final_content = ""
+                    async for chunk in final_response:
+                        if chunk.choices and chunk.choices[0].delta.content:
+                            content = chunk.choices[0].delta.content
+                            final_content += content
+                            yield {
+                                "type": "stream",
+                                "content": content,
+                                "model": model_id,
+                                "timestamp": datetime.utcnow().isoformat()
+                            }
+                    
+                    # Add final response to session
+                    self.sessions[session_id].append({"role": "assistant", "content": final_content})
+                else:
+                    # No tool calls, just add the response
+                    self.sessions[session_id].append({"role": "user", "content": message})
+                    self.sessions[session_id].append({"role": "assistant", "content": complete_content})
                 
                 yield {
                     "type": "stream_end",

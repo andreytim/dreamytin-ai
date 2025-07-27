@@ -77,22 +77,44 @@
    - Proper error handling
    - Connection management
 
-### Phase 2: Tool Implementation
-1. **Tool framework**
-   - Base tool class/interface
-   - Tool registration system
-   - Tool execution handling
+### Phase 2: Tool Implementation ✅ COMPLETED
+1. **Tool framework** ✅
+   - Base tool class/interface with Pydantic models
+   - Tool registration system with global registry
+   - Tool execution handling with async support
 
-2. **Initial tools**
-   - `ls` - List directory contents
-   - `read_file` - Read file contents
-   - Integration with agent
+2. **Initial tools** ✅
+   - `ls` - List directory contents with options
+   - `read_file` - Read file contents with encoding support
+   - Integration with agent via OpenAI function calling
 
-3. **Tool response formatting**
-   - Consistent response format
+3. **Tool response formatting** ✅
+   - Consistent ToolResult format
    - Error handling for tool calls
+   - Streaming support for tool execution
 
-### Phase 3: Conversation & State
+### Phase 3: Frontend-Backend Integration
+1. **WebSocket connection**
+   - Update frontend to connect to FastAPI WebSocket
+   - Handle connection states (connecting, connected, error)
+   - Implement reconnection logic
+
+2. **Message handling**
+   - Update frontend to send proper message format
+   - Handle streaming responses from backend
+   - Display tool calls and results in chat
+
+3. **Model selection**
+   - Integrate with `/models` endpoint
+   - Update frontend model selector
+   - Handle model-specific features
+
+4. **Error handling**
+   - Display backend errors in frontend
+   - Handle WebSocket disconnections
+   - Show connection status to user
+
+### Phase 4: Conversation & State
 1. **Conversation history**
    - In-memory storage initially
    - Message history management
@@ -103,7 +125,7 @@
    - Multiple conversation support
    - Basic persistence (SQLite)
 
-### Phase 4: Knowledge Integration
+### Phase 5: Knowledge Integration
 1. **Knowledge manager port**
    - Load knowledge files
    - Knowledge injection on first message
@@ -113,7 +135,7 @@
    - Dynamic prompt construction
    - Knowledge-aware prompting
 
-### Phase 5: Production Features
+### Phase 6: Production Features
 1. **Usage tracking**
    - Token counting
    - Cost calculation
