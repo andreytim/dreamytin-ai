@@ -4,11 +4,7 @@ DreamyTin AI v2 Backend - FastAPI Server
 import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-import asyncio
-from typing import Dict, Optional, List
-import json
+from typing import Dict
 from datetime import datetime
 from dotenv import load_dotenv
 from app.agent import DreamyTinAgent
@@ -47,10 +43,6 @@ class ConnectionManager:
     def disconnect(self, client_id: str):
         if client_id in self.active_connections:
             del self.active_connections[client_id]
-
-    async def send_message(self, message: str, client_id: str):
-        if client_id in self.active_connections:
-            await self.active_connections[client_id].send_text(message)
 
     async def send_json(self, data: dict, client_id: str):
         if client_id in self.active_connections:

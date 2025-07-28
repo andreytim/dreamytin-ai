@@ -121,16 +121,18 @@
    - Responsive layout with proper header alignment
    - Usage tracking display with token counters
 
-### Phase 4: Conversation & State
-1. **Conversation history**
-   - In-memory storage initially
-   - Message history management
-   - Context window handling
+### Phase 4: Conversation & State ✅ COMPLETED
+1. **Conversation history** ✅
+   - File-based storage (JSON) in `data/conversations/`
+   - Full message history with timestamps
+   - Context window truncation for model limits
+   - Automatic conversation creation on app start
 
-2. **Session management**
-   - Session creation/tracking
-   - Multiple conversation support
-   - Basic persistence (SQLite)
+2. **Session management** ✅
+   - WebSocket-based session tracking
+   - Multiple conversation support with sidebar
+   - Conversation persistence with index
+   - Real-time updates and proper isolation
 
 ### Phase 5: Knowledge Integration
 1. **Knowledge manager port**
@@ -178,11 +180,11 @@ python main.py  # or: uvicorn main:app --reload
 
 1. **Frontend Communication**:
    - v1: HTTP requests to Express server
-   - v2: WebSocket for streaming + HTTP for commands
+   - v2: WebSocket for streaming + HTTP for REST operations
 
 2. **State Management**:
-   - v1: In-memory + file-based
-   - v2: Agent session management + SQLite
+   - v1: In-memory + file-based for knowledge
+   - v2: File-based conversation persistence with JSON
 
 3. **AI Integration**:
    - v1: Direct API calls per provider
@@ -190,4 +192,11 @@ python main.py  # or: uvicorn main:app --reload
 
 4. **Tool System**:
    - v1: Custom implementation
-   - v2: Integrated with agent framework
+   - v2: Integrated with agent framework using OpenAI function calling
+
+5. **Conversation Management** (NEW in v2):
+   - Persistent conversations in `data/conversations/`
+   - Each conversation stored as `{id}.json` file
+   - Index file tracks all conversations with metadata
+   - Automatic context window management
+   - Real-time UI updates via WebSocket

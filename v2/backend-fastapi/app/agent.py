@@ -5,12 +5,7 @@ import os
 from typing import Optional, AsyncIterator, Dict, Any, List
 from datetime import datetime
 import json
-import asyncio
 from dataclasses import dataclass
-
-# OpenAI Agents SDK imports
-from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessage
 
 # LiteLLM for multi-provider support
 from litellm import acompletion
@@ -30,7 +25,6 @@ litellm.set_verbose = False
 @dataclass
 class AgentConfig:
     """Agent configuration"""
-    name: str = "DreamyTin AI"
     instructions: str = ""
     model: str = "claude-3.5-haiku"
     tools: List[Dict[str, Any]] = None
@@ -57,12 +51,8 @@ class DreamyTinAgent:
         if self.api_keys["gemini"]:
             litellm.gemini_key = self.api_keys["gemini"]
         
-        # Initialize OpenAI client for agent functionality
-        self.openai_client = AsyncOpenAI(api_key=self.api_keys["openai"]) if self.api_keys["openai"] else None
-        
         # Agent configuration
         self.agent_config = AgentConfig(
-            name="DreamyTin AI",
             instructions=self.system_prompt,
             model=self.model_config.get("defaultModel", "claude-3.5-haiku"),
             tools=self._get_tool_definitions()
@@ -168,7 +158,6 @@ class DreamyTinAgent:
         self,
         message: str,
         session_id: str = "default",
-        conversation_history: Optional[list] = None,
         model_id: Optional[str] = None,
         stream: bool = True
     ) -> AsyncIterator[Dict[str, Any]]:
@@ -227,7 +216,6 @@ class DreamyTinAgent:
             if stream:
                 complete_content = ""
                 tool_calls = []
-                last_content_sent = ""
                 
                 async for chunk in response:
                     # Handle content

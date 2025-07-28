@@ -53,7 +53,7 @@ python main.py  # or: uvicorn main:app --reload
 - [x] App icon and window management
 - [x] Shared configuration structure
 
-### ✅ Completed (Backend Integration - Phases 1, 2 & 3)
+### ✅ Completed (Backend Integration - Phases 1-4)
 - [x] FastAPI server setup with health checks
 - [x] OpenAI Agents SDK integration
 - [x] LiteLLM adapter for multi-provider support
@@ -69,13 +69,21 @@ python main.py  # or: uvicorn main:app --reload
 - [x] Tool result visualization in tabbed interface
 - [x] Clean component architecture with TypeScript types
 - [x] Responsive UI with proper header alignment
+- [x] **Conversation management system** (Phase 4)
+  - File-based conversation persistence
+  - Conversation sidebar with full CRUD operations
+  - Automatic title generation from first message
+  - Real-time sidebar updates on new messages
+  - Context window management with smart truncation
+  - Proper conversation isolation (no message bleeding)
+  - Auto-create conversation on app start
 
-### 📋 Planned (Phase 4+)
-- [ ] Conversation history management  
+### 📋 Planned (Phase 5+)
 - [ ] Knowledge base integration
-- [ ] Session persistence (SQLite)
 - [ ] Usage tracking and cost calculation
 - [ ] Advanced agent features
+- [ ] Model switching mid-conversation
+- [ ] Tool permission system
 
 ## Key Improvements from v1
 - **Native Performance**: Tauri provides native app performance

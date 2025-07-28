@@ -4,8 +4,6 @@ Handles conversation persistence using JSON files in data/conversations/
 """
 
 import json
-import os
-import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -125,7 +123,7 @@ class ConversationManager:
     
     def _update_index_entry(self, session_id: str, conversation: Dict[str, Any]) -> None:
         """Update conversation in index"""
-        for i, entry in enumerate(self._index["conversations"]):
+        for entry in self._index["conversations"]:
             if entry["id"] == session_id:
                 # Update title based on first user message if still "New conversation"
                 if entry["title"] == "New conversation" and conversation["messages"]:
