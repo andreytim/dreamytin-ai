@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import modelSettings from '../../shared/config/models.json'
 import Chat from './components/Chat'
 import Canvas from './components/Canvas'
-import ConversationSidebar from './components/ConversationSidebar'
+import ConversationSidebar, { type ConversationSidebarRef } from './components/ConversationSidebar'
 import type { Message, Usage, ContextSize, ConnectionState, ModelInfo } from './types'
 import './App.css'
 
@@ -12,7 +12,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState(modelSettings.defaultModel)
   const [usage, setUsage] = useState<Usage>({ totalCost: 0, requests: 0 })
-  const [sessionId, setSessionId] = useState(() => Math.random().toString(36).substring(2, 11))
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [contextSize, setContextSize] = useState<ContextSize>({ tokenCount: 0, messageCount: 0 })
   const [connection, setConnection] = useState<ConnectionState>({ status: 'disconnected' })
@@ -20,10 +20,18 @@ function App() {
   const [availableModels, setAvailableModels] = useState<ModelInfo | null>(null)
   const [canvasContent, setCanvasContent] = useState<string>('')
   const [activeTab, setActiveTab] = useState<string>('')
+  const isReconnectEnabledRef = useRef(true)
+  const sidebarRef = useRef<ConversationSidebarRef>(null)
+  const currentSessionIdRef = useRef<string | null>(sessionId)
+  const hasInitializedRef = useRef(false)
 
   useEffect(() => {
-    connectWebSocket()
-    fetchModels()
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      fetchModels()
+      // Create a new conversation on app start
+      createNewConversation()
+    }
     
     // Cleanup function to close WebSocket on unmount
     return () => {
@@ -35,13 +43,23 @@ function App() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Connect to FastAPI WebSocket
-  const connectWebSocket = () => {
-    // Prevent multiple connections
-    if (websocket && websocket.readyState === WebSocket.OPEN) {
-      return
+  const connectWebSocket = (customSessionId?: string | null) => {
+    // Close existing connection if any
+    if (websocket) {
+      websocket.close()
+      setWebsocket(null)
     }
     
-    const ws_url = `ws://localhost:8000/ws/${sessionId}`
+    // Enable reconnection
+    isReconnectEnabledRef.current = true
+    
+    // Use provided session ID or fall back to state
+    const currentSessionId = customSessionId || sessionId
+    if (!currentSessionId) {
+      return  // No session ID available yet
+    }
+    currentSessionIdRef.current = currentSessionId  // Update the ref
+    const ws_url = `ws://localhost:8000/ws/${currentSessionId}`
     setConnection({ status: 'connecting' })
     
     const ws = new WebSocket(ws_url)
@@ -63,8 +81,10 @@ function App() {
     ws.onclose = () => {
       setConnection({ status: 'disconnected' })
       setWebsocket(null)
-      // Attempt reconnection after 3 seconds
-      setTimeout(connectWebSocket, 3000)
+      // Attempt reconnection after 3 seconds with current session if enabled
+      if (isReconnectEnabledRef.current) {
+        setTimeout(() => connectWebSocket(currentSessionIdRef.current), 3000)
+      }
     }
     
     ws.onerror = (error) => {
@@ -145,6 +165,10 @@ function App() {
         
       case 'stream_end':
         setIsLoading(false)
+        // Refresh sidebar to update conversation title and message count
+        if (sidebarRef.current && !sidebarCollapsed) {
+          sidebarRef.current.refreshConversations()
+        }
         break
         
       case 'error':
@@ -196,23 +220,53 @@ function App() {
   }
 
   // Conversation management functions
-  const createNewConversation = () => {
+  const createNewConversation = async () => {
     const newSessionId = Math.random().toString(36).substring(2, 11)
-    setSessionId(newSessionId)
-    setMessages([])
-    setInput('')
-    setCanvasContent('')
-    setActiveTab('')
-    setContextSize({ tokenCount: 0, messageCount: 0 })
     
-    // Close existing WebSocket and create new one
-    if (websocket) {
-      websocket.close()
-      setWebsocket(null)
+    try {
+      // Create the conversation on the backend first
+      const response = await fetch('http://localhost:8000/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: newSessionId,
+          model: selectedModel
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to create conversation')
+      }
+      
+      // Update frontend state only after backend creation succeeds
+      setSessionId(newSessionId)
+      currentSessionIdRef.current = newSessionId  // Update ref too
+      setMessages([])
+      setInput('')
+      setCanvasContent('')
+      setActiveTab('')
+      setContextSize({ tokenCount: 0, messageCount: 0 })
+      
+      // Disable auto-reconnect temporarily to prevent race conditions
+      isReconnectEnabledRef.current = false
+      
+      // Small delay to ensure old WebSocket is fully closed
+      setTimeout(() => {
+        // Connect with new session ID
+        connectWebSocket(newSessionId)
+      }, 100)
+      
+      // Refresh sidebar to show the new conversation
+      if (sidebarRef.current) {
+        await sidebarRef.current.refreshConversations()
+      }
+      
+    } catch (error) {
+      console.error('Error creating new conversation:', error)
+      // Handle error - could show user notification
     }
-    
-    // Connect with new session ID
-    setTimeout(() => connectWebSocket(), 100)
   }
 
   const selectConversation = async (conversationId: string) => {
@@ -224,6 +278,7 @@ function App() {
         
         // Update state with conversation data
         setSessionId(conversationId)
+        currentSessionIdRef.current = conversationId  // Update ref too
         setMessages(conversation.messages || [])
         setInput('')
         setCanvasContent('')
@@ -233,14 +288,14 @@ function App() {
           messageCount: conversation.messages?.length || 0 
         })
         
-        // Close existing WebSocket and create new one
-        if (websocket) {
-          websocket.close()
-          setWebsocket(null)
-        }
+        // Disable auto-reconnect temporarily to prevent race conditions
+        isReconnectEnabledRef.current = false
         
-        // Connect with selected conversation ID
-        setTimeout(() => connectWebSocket(), 100)
+        // Small delay to ensure old WebSocket is fully closed
+        setTimeout(() => {
+          // Connect with selected conversation ID
+          connectWebSocket(conversationId)
+        }, 100)
       }
     } catch (error) {
       console.error('Error loading conversation:', error)
@@ -248,7 +303,7 @@ function App() {
   }
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading || !websocket || connection.status !== 'connected') return
+    if (!input.trim() || isLoading || !websocket || connection.status !== 'connected' || !sessionId) return
 
     const userMessage: Message = { role: 'user', content: input }
     const currentInput = input
@@ -298,6 +353,7 @@ function App() {
   return (
     <div className="app-container">
       <ConversationSidebar
+        ref={sidebarRef}
         currentConversationId={sessionId}
         onSelectConversation={selectConversation}
         onNewConversation={createNewConversation}

@@ -132,7 +132,6 @@ async def delete_conversation(session_id: str):
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """WebSocket endpoint for streaming chat responses"""
     await manager.connect(websocket, client_id)
-    conversation_history = []
     
     try:
         while True:

@@ -68,8 +68,8 @@ class DreamyTinAgent:
             tools=self._get_tool_definitions()
         )
         
-        # Conversation sessions (deprecated - now using ConversationManager)
-        self.sessions: Dict[str, List[ChatCompletionMessage]] = {}
+        # Conversation sessions (removed - now using ConversationManager exclusively)
+        # self.sessions: Dict[str, List[ChatCompletionMessage]] = {}
         
         # File-based conversation manager
         self.conversation_manager = ConversationManager()
@@ -157,9 +157,6 @@ class DreamyTinAgent:
     
     async def create_session(self, session_id: str, model: str = None) -> None:
         """Create a new conversation session"""
-        # Keep backward compatibility with in-memory sessions
-        self.sessions[session_id] = []
-        
         # Check if conversation already exists
         existing_conversation = await self.conversation_manager.get_conversation(session_id)
         if not existing_conversation:
@@ -182,7 +179,8 @@ class DreamyTinAgent:
             model_id = self.agent_config.model
         
         # Create session if it doesn't exist
-        if session_id not in self.sessions:
+        existing_conversation = await self.conversation_manager.get_conversation(session_id)
+        if not existing_conversation:
             await self.create_session(session_id, model_id)
         
         # Convert to LiteLLM model name for multi-provider support
@@ -269,17 +267,11 @@ class DreamyTinAgent:
                 if tool_calls:
                     # Save user message
                     await self.conversation_manager.add_message(session_id, "user", message)
-                    self.sessions[session_id].append({"role": "user", "content": message})
                     
                     # Save assistant message with tool calls
                     await self.conversation_manager.add_message(
                         session_id, "assistant", complete_content or None, tool_calls=tool_calls
                     )
-                    self.sessions[session_id].append({
-                        "role": "assistant", 
-                        "content": complete_content or None,
-                        "tool_calls": tool_calls
-                    })
                     
                     # Execute tools and stream results
                     for tool_call in tool_calls:
@@ -305,11 +297,6 @@ class DreamyTinAgent:
                         await self.conversation_manager.add_message(
                             session_id, "tool", tool_result, tool_call_id=tool_call["id"]
                         )
-                        self.sessions[session_id].append({
-                            "role": "tool",
-                            "content": tool_result,
-                            "tool_call_id": tool_call["id"]
-                        })
                         
                         # Stream tool result
                         yield {
@@ -321,8 +308,10 @@ class DreamyTinAgent:
                         }
                     
                     # Get final response after tool execution
+                    # Load current conversation messages from persistent storage
+                    current_messages = await self.conversation_manager.get_conversation_messages(session_id)
                     messages_with_tools = [{"role": "system", "content": self.agent_config.instructions}]
-                    messages_with_tools.extend(self.sessions[session_id])
+                    messages_with_tools.extend(current_messages)
                     
                     # Build final completion kwargs with tools if model supports them
                     final_completion_kwargs = {
@@ -392,11 +381,6 @@ class DreamyTinAgent:
                             session_id, "assistant", final_content or None, 
                             tool_calls=final_tool_calls if final_tool_calls else None
                         )
-                        self.sessions[session_id].append({
-                            "role": "assistant",
-                            "content": final_content or None,
-                            "tool_calls": final_tool_calls if final_tool_calls else None
-                        })
                         
                         # Increment iteration counter
                         iteration_count += 1
@@ -429,11 +413,6 @@ class DreamyTinAgent:
                             await self.conversation_manager.add_message(
                                 session_id, "tool", tool_result, tool_call_id=tool_call["id"]
                             )
-                            self.sessions[session_id].append({
-                                "role": "tool",
-                                "content": tool_result,
-                                "tool_call_id": tool_call["id"]
-                            })
                             
                             # Stream tool result
                             yield {
@@ -445,8 +424,10 @@ class DreamyTinAgent:
                             }
                         
                         # Update messages for next iteration
+                        # Reload messages from persistent storage to include new tool results
+                        updated_messages = await self.conversation_manager.get_conversation_messages(session_id)
                         messages_with_tools = [{"role": "system", "content": self.agent_config.instructions}]
-                        messages_with_tools.extend(self.sessions[session_id])
+                        messages_with_tools.extend(updated_messages)
                     
                     # Check if we hit the iteration limit
                     if iteration_count >= max_iterations:
@@ -460,8 +441,6 @@ class DreamyTinAgent:
                     # No tool calls, save user and assistant messages
                     await self.conversation_manager.add_message(session_id, "user", message)
                     await self.conversation_manager.add_message(session_id, "assistant", complete_content)
-                    self.sessions[session_id].append({"role": "user", "content": message})
-                    self.sessions[session_id].append({"role": "assistant", "content": complete_content})
                 
                 yield {
                     "type": "stream_end",
@@ -472,8 +451,6 @@ class DreamyTinAgent:
                 content = response.choices[0].message.content
                 await self.conversation_manager.add_message(session_id, "user", message)
                 await self.conversation_manager.add_message(session_id, "assistant", content)
-                self.sessions[session_id].append({"role": "user", "content": message})
-                self.sessions[session_id].append({"role": "assistant", "content": content})
                 
                 yield {
                     "type": "message",

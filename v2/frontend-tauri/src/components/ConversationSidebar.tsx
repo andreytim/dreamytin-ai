@@ -1,21 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import type { Conversation } from '../types'
 
 interface ConversationSidebarProps {
-  currentConversationId: string
+  currentConversationId: string | null
   onSelectConversation: (conversationId: string) => void
   onNewConversation: () => void
   isCollapsed: boolean
   onToggleCollapse: () => void
 }
 
-export default function ConversationSidebar({
+export interface ConversationSidebarRef {
+  refreshConversations: () => Promise<void>
+}
+
+const ConversationSidebar = forwardRef<ConversationSidebarRef, ConversationSidebarProps>(({
   currentConversationId,
   onSelectConversation,
   onNewConversation,
   isCollapsed,
   onToggleCollapse
-}: ConversationSidebarProps) {
+}, ref) => {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -40,6 +44,11 @@ export default function ConversationSidebar({
       setLoading(false)
     }
   }
+
+  // Expose refresh method to parent
+  useImperativeHandle(ref, () => ({
+    refreshConversations: fetchConversations
+  }), [])
 
   const deleteConversation = async (conversationId: string, event: React.MouseEvent) => {
     event.stopPropagation() // Prevent conversation selection
@@ -148,4 +157,8 @@ export default function ConversationSidebar({
       </div>
     </div>
   )
-}
+})
+
+ConversationSidebar.displayName = 'ConversationSidebar'
+
+export default ConversationSidebar
