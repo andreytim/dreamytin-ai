@@ -342,7 +342,23 @@ function App() {
 
   const handleToolResultClick = (result: string) => {
     setCanvasContent(result)
-    setActiveTab('content')
+    // If the tool has no content, set activeTab to empty, otherwise use 'content'
+    try {
+      const parsed = JSON.parse(result)
+      if (typeof parsed === 'object' && parsed !== null) {
+        const tabs = Object.keys(parsed)
+        if (tabs.includes('content') && parsed.content) {
+          setActiveTab('content')
+        } else {
+          setActiveTab('')
+        }
+      } else {
+        setActiveTab('content')
+      }
+    } catch (e) {
+      // If not valid JSON, assume it's content
+      setActiveTab('content')
+    }
   }
 
   const clearCanvas = () => {

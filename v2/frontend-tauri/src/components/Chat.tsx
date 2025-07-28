@@ -116,21 +116,22 @@ const Chat: FC<ChatProps> = ({
       <div className="messages-container">
         {messages.map((message, index) => (
           <div key={index} className={`message ${message.role}`}>
-            <div className="message-content">
+            <div 
+              className="message-content"
+              onClick={message.role === 'tool' && message.toolResult ? () => {
+                onToolResultClick(message.toolResult!)
+              } : undefined}
+              style={{ cursor: message.role === 'tool' && message.toolResult ? 'pointer' : 'default' }}
+            >
               {message.role === 'assistant' ? (
                 <ReactMarkdown>{message.content}</ReactMarkdown>
               ) : message.role === 'tool' ? (
-                <div 
-                  className="tool-message"
-                  onClick={() => {
-                    if (message.toolResult) {
-                      onToolResultClick(message.toolResult)
-                    }
-                  }}
-                  style={{ cursor: message.toolResult ? 'pointer' : 'default' }}
-                >
+                <div className="tool-message">
                   <div className="tool-header">
-                    {message.content}
+                    <div className="tool-name">
+                      <span className="tool-icon">🔧</span>
+                      {message.content.replace('🔧 ', '')}
+                    </div>
                     {message.toolResult && <span className="tool-status">✓ Complete</span>}
                   </div>
                 </div>
