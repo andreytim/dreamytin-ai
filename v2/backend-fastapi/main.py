@@ -100,9 +100,9 @@ async def create_conversation(request: dict):
 
 @app.get("/conversations/{session_id}")
 async def get_conversation(session_id: str):
-    """Get conversation details and messages"""
+    """Get conversation details and messages formatted for frontend"""
     try:
-        conversation = await agent.conversation_manager.get_conversation(session_id)
+        conversation = await agent.get_conversation_for_frontend(session_id)
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
         return conversation
@@ -147,6 +147,12 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     model_id=model_id,
                     stream=True
                 ):
+                    # Debug: Log what we're sending to frontend
+                    if response_chunk.get("type") == "stream" and response_chunk.get("content"):
+                        print(f"DEBUG: Streaming to frontend: {response_chunk['content'][:50]}...")
+                    elif response_chunk.get("type") != "stream":
+                        print(f"DEBUG: Sending signal: {response_chunk.get('type')}")
+                    
                     await manager.send_json(response_chunk, client_id)
                 
             except Exception as e:
